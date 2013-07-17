@@ -8,7 +8,7 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 
 <table><tbody>
 <tr>
-<th align = 'left'> Directory/File </th>
+<th align = 'left'> File/Folder </th>
 <th align = 'left'> Description </th>
 </tr>
 <tr>
