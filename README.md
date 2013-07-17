@@ -6,60 +6,45 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 
 ##Files and folders included
 
-
 <table><tbody>
 <tr>
 <th align = 'left'> Directory/File </th>
 <th align = 'left'> Description </th>
 </tr>
 <tr>
-<td align = 'left'> bin </td>
-<td align = 'left'> Contains class files </td>
+<td class='confluenceTd'> conf </td>
+<td class='confluenceTd'> Contains the monitor.xml </td>
 </tr>
 <tr>
-<td align = 'left'> conf </td>
-<td align = 'left'> Contains the monitor.xml </td>
+<td class='confluenceTd'> lib </td>
+<td class='confluenceTd'> Contains third-party project references </td>
 </tr>
 <tr>
-<td align = 'left'> lib </td>
-<td align = 'left'> Contains third-party project references </td>
+<td class='confluenceTd'> src </td>
+<td class='confluenceTd'> Contains source code to the HBase Monitoring Extension </td>
 </tr>
 <tr>
-<td align = 'left'> src </td>
-<td align = 'left'> Contains source code to HBase Custom Monitor </td>
+<td class='confluenceTd'> dist </td>
+<td class='confluenceTd'> Only obtained when using ant. Run 'ant build' to get binaries. Run 'ant package' to get the distributable .zip file </td>
 </tr>
 <tr>
-<td align = 'left'> dist </td>
-<td align = 'left'> Contains the distribution package (monitor.xml and jar) </td>
-</tr>
-<tr>
-<td align = 'left'> build.xml </td>
-<td align = 'left'> Ant build script to package the project (required only if changing Java code) </td>
+<td class='confluenceTd'> build.xml </td>
+<td class='confluenceTd'> Ant build script to package the project (required only if changing Java code) </td>
 </tr>
 </tbody>
 </table>
 
 
-![](images/emoticons/information.gif) Main Java File: **src/com/appdynamics/monitors/hbase/HBaseMonitor.java**  -> This file contains the metric parsing and printing.
-
 ##Installation
-
 
 ![](images/emoticons/warning.gif) The HBase Server must [enable JMX metrics](http://hbase.apache.org/metrics.html).
 
-1. In the \<machine agent home\>/monitors directory, create a new folder for the HBase monitor.
-2. Copy the contents in the 'dist' folder to the folder created in step 1.
-3. Restart the Machine Agent.
-4.  In the AppDynamics Metric Browser, look for: Application Infrastructure
-    Performance | \<Tier\> | Custom Metrics | HBase | Status | Activity
+1. Run 'ant package' from the hbase-monitoring-extension directory
+2. Download the file HBaseMonitor.zip found in the 'dist' directory into \<machineagent install dir\>/monitors/
+3. Unzip the downloaded file
+4. Restart the machineagent
+5. In the AppDynamics Metric Browser, look for: Application Infrastructure Performance | \<Tier\> | Custom Metrics | HBase | Status | Activity
 
-##Rebuilding the project
-
-
-1.  At the command line, go to the root directory (where all the files are located).
-2.  Type "ant" (without the quotes) and press Return.
-
-    'dist' will be updated with the monitor.xml and hbase.jar
 
 ##Metrics
 
