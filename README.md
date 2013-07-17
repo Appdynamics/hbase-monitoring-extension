@@ -1,4 +1,4 @@
-# AppDynamics HBase Monitoring Extension
+# AppDynamics HBase - Monitoring Extension
 
 ##Use case
 
@@ -149,7 +149,7 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 ##Screen shot
 
 
-![](images/hbase_01.png)
+![](http://appsphere.appdynamics.com/t5/image/serverpage/image-id/71i2A4082FA8329124C/image-size/original?v=mpbl-1&px=-1)
 
 
 ##Contributing
