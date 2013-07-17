@@ -1,10 +1,10 @@
 # AppDynamics HBase - Monitoring Extension
 
-##Use case
+##Use Case
 
 The HBase custom monitor captures HBase statistics from the JMX server and displays them in the AppDynamics Metric Browser.
 
-##Files and folders included
+##Files and Folders Included
 
 <table><tbody>
 <tr>
@@ -25,7 +25,7 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 </tr>
 <tr>
 <td class='confluenceTd'> dist </td>
-<td class='confluenceTd'> Only obtained when using ant. Run 'ant build' to get binaries. Run 'ant package' to get the distributable .zip file </td>
+<td class='confluenceTd'> Only obtained when using ant. Run 'ant build' to get binaries. Run 'ant package' to get the distributable .zip file. </td>
 </tr>
 <tr>
 <td class='confluenceTd'> build.xml </td>
@@ -146,7 +146,7 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 </table>
 
 
-##Screen shot
+##Screen Shot
 
 
 ![](http://appsphere.appdynamics.com/t5/image/serverpage/image-id/71i2A4082FA8329124C/image-size/original?v=mpbl-1&px=-1)
