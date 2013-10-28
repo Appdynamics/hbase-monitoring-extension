@@ -1,5 +1,7 @@
 # AppDynamics HBase - Monitoring Extension
 
+This extension works only with the Java agent.
+
 ##Use Case
 
 The HBase custom monitor captures HBase statistics from the JMX server and displays them in the AppDynamics Metric Browser.
