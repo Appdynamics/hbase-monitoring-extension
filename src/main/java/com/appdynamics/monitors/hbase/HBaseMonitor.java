@@ -81,12 +81,12 @@ public class HBaseMonitor extends AManagedMonitor
 
             for (Map.Entry<MBeanAttributeInfo, Object> metric : hbaseMetrics.entrySet()) {
                 String attributeName = metric.getKey().getName();
-                String metricName = getTileCase(attributeName, true);
-                if (metricName != null && !metricName.equals("")) {
-                    if (null != metric.getValue() && Number.class.isAssignableFrom(metric.getValue().getClass())) {
-                        Double result = Double.parseDouble(String.valueOf(metric.getValue()));
+                Object val = metric.getValue();
+                if (val instanceof Number) {
+                    String metricName = getTileCase(attributeName, true);
+                    if (metricName != null && !metricName.equals("")) {
                         printMetric(
-                            "Activity|" + getTileCase(metricName, true), result.intValue(),
+                            "Activity|" + getTileCase(metricName, true), metric.getValue(),
                             MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
                             MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
                             MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
@@ -178,14 +178,13 @@ public class HBaseMonitor extends AManagedMonitor
             return _getTileCase(camelCase, CAMEL_CASE_REGEX);
         }
         else {
-            return _getTileCase(camelCase, "_");
+            return _getTileCase(camelCase, "_+");
         }
     }
 
     /**
      * @param camelCase
      * @param regEx
-     * @param caps
      * @return
      */
     public String _getTileCase(final String camelCase, final String regEx)
@@ -194,7 +193,9 @@ public class HBaseMonitor extends AManagedMonitor
         String[] tileWords = camelCase.split(regEx);
 
         for (String tileWord : tileWords) {
-            tileCase += Character.toUpperCase(tileWord.charAt(0)) + tileWord.substring(1) + " ";
+            if (tileWord.length() >= 1){
+                tileCase += Character.toUpperCase(tileWord.charAt(0)) + tileWord.substring(1) + " ";
+            }
         }
 
         return tileCase.trim();
@@ -219,8 +220,13 @@ public class HBaseMonitor extends AManagedMonitor
         logger.info("Sending [" + getMetricPrefix() + metricName + "]");
 
         MetricWriter metricWriter = getMetricWriter(getMetricPrefix() + metricName, aggregation, timeRollup, cluster);
-
-        metricWriter.printMetric(String.valueOf(metricValue));
+        if (metricValue instanceof Double){
+            metricWriter.printMetric(String.valueOf(Math.round((Double)metricValue)));
+        } else if (metricValue instanceof Float) {
+            metricWriter.printMetric(String.valueOf(Math.round((Float)metricValue)));
+        } else {
+            metricWriter.printMetric(String.valueOf(metricValue));
+        }
     }
 
     /**
