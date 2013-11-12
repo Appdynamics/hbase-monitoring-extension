@@ -1,229 +1,148 @@
 
 package com.appdynamics.monitors.hbase;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectInstance;
-import javax.management.ObjectName;
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
-
-import org.apache.log4j.Logger;
-
 import com.singularity.ee.agent.systemagent.api.AManagedMonitor;
 import com.singularity.ee.agent.systemagent.api.MetricWriter;
 import com.singularity.ee.agent.systemagent.api.TaskExecutionContext;
 import com.singularity.ee.agent.systemagent.api.TaskOutput;
 import com.singularity.ee.agent.systemagent.api.exception.TaskExecutionException;
+import org.apache.log4j.Logger;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.Element;
+import org.dom4j.io.SAXReader;
 
-public class HBaseMonitor extends AManagedMonitor
-{
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class HBaseMonitor extends AManagedMonitor {
     private static Logger logger = Logger.getLogger(HBaseMonitor.class);
+    private List<Credential> credentials;
 
     // private static final String HADOOP_REGION_STATISTICS_BEAN = "hadoop:service=RegionServer,name=RegionServerStatistics";
     private static final String CUSTOM_METRICS_H_BASE_STATUS = "Custom Metrics|HBase|Status|";
-    private static final String HADOOP_REGION_STATISTICS_PATTERN1 = "hadoop:name=regionserver";
-    private static final String HADOOP_REGION_STATISTICS_PATTERN2 = "hadoop:service=regionserver";
-    private static final String CAMEL_CASE_REGEX = "(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])";
-
-    private MBeanServerConnection connection = null;
-    private Map<MBeanAttributeInfo, Object> hbaseMetrics = new HashMap<MBeanAttributeInfo, Object>();
-
-    /**
-     * Connects to JMX Remote Server to access HBase JMX Metrics
-     * 
-     * @param   host                Host of the remote jmx server.
-     * @param   port                Port of the remote jmx server.
-     * @param   username            Username to access the remote jmx server.
-     * @param   password            Password to access the remote jmx server.
-     * @throws  IOException         Failed to connect to server.
-     */
-    public void connect(final String host, final String port, final String username, final String password)
-        throws IOException
-    {
-        final JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + host + ":" + port + "/jmxrmi");
-        final Map<String, Object> env = new HashMap<String, Object>();
-        env.put(JMXConnector.CREDENTIALS, new String[] { username, password });
-        this.connection = JMXConnectorFactory.connect(url, env).getMBeanServerConnection();
-    }
 
     /**
      * Main execution method that uploads the metrics to the AppDynamics Controller
+     *
      * @see com.singularity.ee.agent.systemagent.api.ITask#execute(java.util.Map, com.singularity.ee.agent.systemagent.api.TaskExecutionContext)
      */
     @Override
-    public TaskOutput execute(Map<String, String> args, TaskExecutionContext arg1) throws TaskExecutionException
-    {
+    public TaskOutput execute(Map<String, String> args, TaskExecutionContext arg1) throws TaskExecutionException {
+        getCredentials(args);
         try {
-            final String host = args.get("host");
-            final String port = args.get("port");
-            final String username = args.get("user");
-            final String password = args.get("pass");
+            ExecutorService executor = Executors.newFixedThreadPool(credentials.size());
 
-            connect(host, port, username, password);
+            CompletionService<HBaseCommunicator> threadPool =
+                    new ExecutorCompletionService<HBaseCommunicator>(executor);
 
-            final Set<String> patterns = new HashSet<String>();
-            patterns.add(HADOOP_REGION_STATISTICS_PATTERN1);
-            patterns.add(HADOOP_REGION_STATISTICS_PATTERN2);
-
-            populate(patterns);
-
-            printMetric(
-                "Uptime", 1, MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
-                MetricWriter.METRIC_TIME_ROLLUP_TYPE_SUM, MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
-
-            for (Map.Entry<MBeanAttributeInfo, Object> metric : hbaseMetrics.entrySet()) {
-                String attributeName = metric.getKey().getName();
-                Object val = metric.getValue();
-                if (val instanceof Number) {
-                    String metricName = getTileCase(attributeName, true);
-                    if (metricName != null && !metricName.equals("")) {
-                        printMetric(
-                            "Activity|" + getTileCase(metricName, true), metric.getValue(),
-                            MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
-                            MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
-                            MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
-                    }
-                }
+            for (Credential cred : credentials) {
+                threadPool.submit(new HBaseCommunicator(cred, logger));
             }
 
+            for (int i = 0; i < credentials.size(); i++) {
+                try {
+                    HBaseCommunicator comm = threadPool.take().get();
+                    if (comm != null) {
+                        String dbname = comm.getDbname();
+                        printMetric(dbname + "|Uptime", 1,
+                                MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
+                                MetricWriter.METRIC_TIME_ROLLUP_TYPE_SUM,
+                                MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
+
+                        Map<String, Object> metrics = comm.getMetrics();
+                        for (Map.Entry<String, Object> metric : metrics.entrySet()) {
+                            printMetric(dbname + metric.getKey(), metric.getValue(),
+                                    MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
+                                    MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
+                                    MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.error(e);    //TODO: improve?
+                }
+            }
+            executor.shutdown();
+
             return new TaskOutput("HBase Metric Upload Complete");
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             logger.error(e.getMessage(), e);
             return new TaskOutput("HBase Metric Upload Failed!");
         }
     }
 
-    /**
-     * Fetches all the attributes from HBase RegionServer JMX
-     * @throws Exception
-     */
-    public void populate(final Set<String> regionServerNamePatterns) throws Exception
-    {
-        try {
-            // Collect all the useful metrics.
-            // Get all the m-beans registered.
-            final Set<ObjectInstance> queryMBeans = this.connection.queryMBeans(null, null);
+    private void getCredentials(final Map<String, String> args) {
+        credentials = new ArrayList<Credential>();
+        Credential cred = new Credential();
 
-            // Iterate through each of them available.
-            for (final ObjectInstance mbean : queryMBeans) {
+        cred.dbname = args.get("dbname");
+        cred.host = args.get("host");
+        cred.port = args.get("port");
+        cred.username = args.get("user");
+        cred.password = args.get("pass");
 
-                // Get the canonical name
-                final String canonicalName = mbean.getObjectName().getCanonicalName();
+        if (isNotEmpty(cred.dbname)) {
+            cred.dbname = "DB 1";
+        }
 
-                if (startsWith(canonicalName, regionServerNamePatterns)) {
-                    final ObjectName objectName = mbean.getObjectName();
+        credentials.add(cred);
 
-                    // Fetch all attributes.
-                    final MBeanAttributeInfo[] attributes = this.connection.getMBeanInfo(objectName).getAttributes();
+        String xmlPath = args.get("properties-path");
+        if (isNotEmpty(xmlPath)) {
+            try {
+                SAXReader reader = new SAXReader();
+                Document doc = reader.read(xmlPath);
+                Element root = doc.getRootElement();
 
-                    for (final MBeanAttributeInfo attr : attributes) {
-                        // See we do not violate the security rules, i.e. only if the attribute is readable.
-                        if (attr.isReadable()) {
-                            // Filter valid attributes.
-                            final String attributeName = attr.getName();
+                for (Element credElem : (List<Element>) root.elements("credentials")) {
+                    cred.dbname = credElem.elementText("dbname");
+                    cred.host = credElem.elementText("host");
+                    cred.port = credElem.elementText("port");
+                    cred.username = credElem.elementText("username");
+                    cred.password = credElem.elementText("password");
 
-                            if (isDisplayableAttribute(attributeName)) {
-                                // Collect the statistics.
-                                final Object value = this.connection.getAttribute(objectName, attr.getName());
-                                this.hbaseMetrics.put(attr, value);
-                            }
+                    if (isNotEmpty(cred.host) && isNotEmpty(cred.port)) {
+                        if (!isNotEmpty(cred.dbname)) {
+                            cred.dbname = "DB " + (credentials.size() + 1);
                         }
+                        credentials.add(cred);
                     }
                 }
+            } catch (DocumentException e) {
+                logger.error("Cannot read '" + xmlPath + "'. Monitor is running without additional credentials");
             }
         }
-        catch (Exception e) {
-            logger.error("Collecting statistics failed.", e);
-        }
-    }
-
-    public boolean isDisplayableAttribute(final String attributeName)
-    {
-        return !attributeName.contains(":") && !attributeName.contains(".");
-    }
-
-    /**
-     * @param canonicalName
-     * @param regionServerNamePatterns
-     * @return
-     */
-    private boolean startsWith(final String canonicalName, final Set<String> regionServerNamePatterns)
-    {
-        for (final String pattern : regionServerNamePatterns) {
-            if (canonicalName.toLowerCase().contains(pattern)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @param camelCase
-     * @param caps
-     * @return
-     */
-    public String getTileCase(final String camelCase, final boolean caps)
-    {
-        if (-1 == camelCase.indexOf('_')) {
-            return _getTileCase(camelCase, CAMEL_CASE_REGEX);
-        }
-        else {
-            return _getTileCase(camelCase, "_+");
-        }
-    }
-
-    /**
-     * @param camelCase
-     * @param regEx
-     * @return
-     */
-    public String _getTileCase(final String camelCase, final String regEx)
-    {
-        String tileCase = "";
-        String[] tileWords = camelCase.split(regEx);
-
-        for (String tileWord : tileWords) {
-            if (tileWord.length() >= 1){
-                tileCase += Character.toUpperCase(tileWord.charAt(0)) + tileWord.substring(1) + " ";
-            }
-        }
-
-        return tileCase.trim();
     }
 
     /**
      * Returns the metric to the AppDynamics Controller.
-     * 
-     * @param metricName 	Name of the Metric
-     * @param metricValue 	Value of the Metric
-     * @param aggregation 	Average OR Observation OR Sum
-     * @param timeRollup 	Average OR Current OR Sum
-     * @param cluster 		Collective OR Individual
+     *
+     * @param metricName  Name of the Metric
+     * @param metricValue Value of the Metric
+     * @param aggregation Average OR Observation OR Sum
+     * @param timeRollup  Average OR Current OR Sum
+     * @param cluster     Collective OR Individual
      */
-    public void printMetric(
-        String metricName,
-        Object metricValue,
-        String aggregation,
-        String timeRollup,
-        String cluster)
-    {
+    private void printMetric(
+            String metricName,
+            Object metricValue,
+            String aggregation,
+            String timeRollup,
+            String cluster) {
         logger.info("Sending [" + getMetricPrefix() + metricName + "]");
 
         MetricWriter metricWriter = getMetricWriter(getMetricPrefix() + metricName, aggregation, timeRollup, cluster);
-        if (metricValue instanceof Double){
-            metricWriter.printMetric(String.valueOf(Math.round((Double)metricValue)));
+        if (metricValue instanceof Double) {
+            metricWriter.printMetric(String.valueOf(Math.round((Double) metricValue)));
         } else if (metricValue instanceof Float) {
-            metricWriter.printMetric(String.valueOf(Math.round((Float)metricValue)));
+            metricWriter.printMetric(String.valueOf(Math.round((Float) metricValue)));
         } else {
             metricWriter.printMetric(String.valueOf(metricValue));
         }
@@ -231,11 +150,10 @@ public class HBaseMonitor extends AManagedMonitor
 
     /**
      * Metric Prefix
-     * 
+     *
      * @return Metric Location in the Controller (String)
      */
-    public String getMetricPrefix()
-    {
+    private static String getMetricPrefix() {
         return CUSTOM_METRICS_H_BASE_STATUS;
     }
 
@@ -243,12 +161,23 @@ public class HBaseMonitor extends AManagedMonitor
      * @param args
      * @throws Exception
      */
-    public static void main(String[] args) throws Exception
-    {
+    public static void main(String[] args) throws Exception {
         Map<String, String> args1 = new HashMap<String, String>();
         args1.put("host", "localhost");
         args1.put("port", "10101");
 
         new HBaseMonitor().execute(args1, null);
+    }
+
+    public class Credential {
+        public String dbname;
+        public String host;
+        public String port;
+        public String username;
+        public String password;
+    }
+
+    private static boolean isNotEmpty(final String input) {
+        return input != null && !input.trim().isEmpty();
     }
 }
