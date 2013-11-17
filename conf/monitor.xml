@@ -18,7 +18,7 @@
                         <argument name="pass" is-required="false" default-value="" />
                 </task-arguments>
                 <java-task>
-                        <classpath>HBaseMonitor.jar</classpath>
+                        <classpath>HBaseMonitor.jar;lib/dom4j/dom4j-1.6.1.jar</classpath>
                         <impl-class>com.appdynamics.monitors.hbase.HBaseMonitor</impl-class>
                 </java-task>
         </monitor-run-task>

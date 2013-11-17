@@ -26,7 +26,7 @@ public class HBaseMonitor extends AManagedMonitor {
     private List<Credential> credentials;
 
     // private static final String HADOOP_REGION_STATISTICS_BEAN = "hadoop:service=RegionServer,name=RegionServerStatistics";
-    private static final String CUSTOM_METRICS_H_BASE_STATUS = "Custom Metrics|HBase|Status|";
+    private static final String CUSTOM_METRICS_H_BASE_STATUS = "Custom Metrics|HBase|";
 
     /**
      * Main execution method that uploads the metrics to the AppDynamics Controller
@@ -49,7 +49,7 @@ public class HBaseMonitor extends AManagedMonitor {
             for (int i = 0; i < credentials.size(); i++) {
                 try {
                     HBaseCommunicator comm = threadPool.take().get();
-                    if (comm != null) {
+                    if (comm != null && !comm.getMetrics().isEmpty()) {
                         String dbname = comm.getDbname();
                         printMetric(dbname + "|Uptime", 1,
                                 MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
@@ -58,14 +58,14 @@ public class HBaseMonitor extends AManagedMonitor {
 
                         Map<String, Object> metrics = comm.getMetrics();
                         for (Map.Entry<String, Object> metric : metrics.entrySet()) {
-                            printMetric(dbname + metric.getKey(), metric.getValue(),
+                            printMetric(dbname + "|" + metric.getKey(), metric.getValue(),
                                     MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
                                     MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
                                     MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
                         }
                     }
                 } catch (Exception e) {
-                    logger.error(e);    //TODO: improve?
+                    logger.error("Failed to get metrics", e);
                 }
             }
             executor.shutdown();
@@ -88,7 +88,7 @@ public class HBaseMonitor extends AManagedMonitor {
         cred.username = args.get("user");
         cred.password = args.get("pass");
 
-        if (isNotEmpty(cred.dbname)) {
+        if (!isNotEmpty(cred.dbname)) {
             cred.dbname = "DB 1";
         }
 

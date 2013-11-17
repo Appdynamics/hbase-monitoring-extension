@@ -42,6 +42,7 @@ public class HBaseCommunicator implements Callable<HBaseCommunicator> {
                 connect();
             } catch (IOException e) {
                 logger.error("Failed to connect to " + cred.host + ":" + cred.port, e);
+                return null;
             }
 
             final Set<String> patterns = new HashSet<String>();
@@ -111,7 +112,7 @@ public class HBaseCommunicator implements Callable<HBaseCommunicator> {
                                 if (value instanceof Number) {
                                     String metricName = getTileCase(attributeName);
                                     if (isNotEmpty(metricName)) {
-                                        hbaseMetrics.put("Activity|" + attributeName, value);
+                                        hbaseMetrics.put("Activity|" + metricName, value);
                                     }
                                 }
                             }
@@ -149,9 +150,9 @@ public class HBaseCommunicator implements Callable<HBaseCommunicator> {
      */
     private String getTileCase(String camelCase) {
         if (camelCase.contains("_")) {
-            return getTileCase(camelCase, CAMEL_CASE_REGEX);
-        } else {
             return getTileCase(camelCase, "_+");
+        } else {
+            return getTileCase(camelCase, CAMEL_CASE_REGEX);
         }
     }
 
