@@ -86,7 +86,7 @@ public class HBaseMonitor extends AManagedMonitor
                     if (null != metric.getValue() && Number.class.isAssignableFrom(metric.getValue().getClass())) {
                         Double result = Double.parseDouble(String.valueOf(metric.getValue()));
                         printMetric(
-                            "Activity|" + getTileCase(metricName, true), result,
+                            "Activity|" + getTileCase(metricName, true), result.intValue(),
                             MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
                             MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
                             MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
@@ -216,7 +216,8 @@ public class HBaseMonitor extends AManagedMonitor
         String timeRollup,
         String cluster)
     {
-        System.out.println(getMetricPrefix() + metricName);
+        logger.info("Sending [" + getMetricPrefix() + metricName + "]");
+
         MetricWriter metricWriter = getMetricWriter(getMetricPrefix() + metricName, aggregation, timeRollup, cluster);
 
         metricWriter.printMetric(String.valueOf(metricValue));
