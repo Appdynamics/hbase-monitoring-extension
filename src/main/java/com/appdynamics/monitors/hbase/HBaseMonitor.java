@@ -35,8 +35,8 @@ public class HBaseMonitor extends AManagedMonitor {
      */
     @Override
     public TaskOutput execute(Map<String, String> args, TaskExecutionContext arg1) throws TaskExecutionException {
-        getCredentials(args);
         try {
+            getCredentials(args);
             ExecutorService executor = Executors.newFixedThreadPool(credentials.size());
 
             CompletionService<HBaseCommunicator> threadPool =
