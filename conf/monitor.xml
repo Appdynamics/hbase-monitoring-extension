@@ -12,10 +12,20 @@
                 <type>java</type>
                 <execution-timeout-in-secs>60</execution-timeout-in-secs>
                 <task-arguments>
+                        <!-- Database name (RECOMMENDED)(OPTIONAL)
+                                Name of the database to be shown in Metric Browser.
+                                If left blank, database will have name of 'DB #', where # is the database order number in
+                                credentials list
+                        -->
+                        <argument name="dbname" is-required="false" default-value="" />
                         <argument name="host" is-required="true" default-value="localhost" />
                         <argument name="port" is-required="true" default-value="10101" />
                         <argument name="user" is-required="false" default-value="" />
                         <argument name="pass" is-required="false" default-value="" />
+
+                        <!-- Additional HBase credentials (OPTIONAL)
+                                Additional HBase credentials can be placed in properties.xml
+                         -->
                 </task-arguments>
                 <java-task>
                         <classpath>HBaseMonitor.jar;lib/dom4j/dom4j-1.6.1.jar</classpath>

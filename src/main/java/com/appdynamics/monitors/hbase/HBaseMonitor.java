@@ -106,8 +106,8 @@ public class HBaseMonitor extends AManagedMonitor {
                     cred.dbname = credElem.elementText("dbname");
                     cred.host = credElem.elementText("host");
                     cred.port = credElem.elementText("port");
-                    cred.username = credElem.elementText("username");
-                    cred.password = credElem.elementText("password");
+                    cred.username = credElem.elementText("user");
+                    cred.password = credElem.elementText("pass");
 
                     if (isNotEmpty(cred.host) && isNotEmpty(cred.port)) {
                         if (!isNotEmpty(cred.dbname)) {
