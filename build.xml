@@ -15,7 +15,7 @@
             <fileset dir="${build.dir}/classes"/>
         </jar>
         <copy todir="${build.dir}/HBaseMonitor">
-            <fileset dir="${conf.dir}" includes="monitor.xml"/>
+            <fileset dir="${conf.dir}" includes="*"/>
         </copy>
         <copy todir="${build.dir}/HBaseMonitor/lib/">
             <fileset dir="${lib.dir}" includes="dom4j/*"/>

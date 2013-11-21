@@ -26,6 +26,7 @@
                         <!-- Additional HBase credentials (OPTIONAL)
                                 Additional HBase credentials can be placed in properties.xml
                          -->
+                         <argument name="properties-path" is-required="false" default-value="monitors/HBaseMonitor/properties.xml" />
                 </task-arguments>
                 <java-task>
                         <classpath>HBaseMonitor.jar;lib/dom4j/dom4j-1.6.1.jar</classpath>
