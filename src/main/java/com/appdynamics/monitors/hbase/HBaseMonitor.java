@@ -102,6 +102,7 @@ public class HBaseMonitor extends AManagedMonitor {
                 Element root = doc.getRootElement();
 
                 for (Element credElem : (List<Element>) root.elements("credentials")) {
+                    cred = new Credential();
                     cred.dbname = credElem.elementText("dbname");
                     cred.host = credElem.elementText("host");
                     cred.port = credElem.elementText("port");
