@@ -166,7 +166,7 @@ public class HBaseCommunicator implements Callable<HBaseCommunicator> {
         String[] tileWords = camelCase.split(regex);
 
         for (String tileWord : tileWords) {
-            if (!tileWord.isEmpty()) {
+            if (tileWord.length() > 0) {
                 tileCase += Character.toUpperCase(tileWord.charAt(0)) + tileWord.substring(1) + " ";
             }
         }
@@ -175,6 +175,6 @@ public class HBaseCommunicator implements Callable<HBaseCommunicator> {
     }
 
     private static boolean isNotEmpty(final String input) {
-        return input != null && !input.trim().isEmpty();
+        return input != null && input.trim().length() > 0;
     }
 }
