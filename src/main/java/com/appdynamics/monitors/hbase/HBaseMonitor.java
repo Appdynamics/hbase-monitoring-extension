@@ -179,6 +179,6 @@ public class HBaseMonitor extends AManagedMonitor {
     }
 
     private static boolean isNotEmpty(final String input) {
-        return input != null && !input.trim().isEmpty();
+        return input != null && input.trim().length() > 0;
     }
 }

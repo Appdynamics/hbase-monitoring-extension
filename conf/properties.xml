@@ -13,7 +13,7 @@
     </credentials>
 -->
 
-<cassandra-monitor>
+<hbase-monitor>
     <credentials>
         <dbname></dbname>
         <host></host>
@@ -21,4 +21,4 @@
         <user></user>
         <pass></pass>
     </credentials>
-</cassandra-monitor>
+</hbase-monitor>
