@@ -14,8 +14,10 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 1. Run 'ant package' from the hbase-monitoring-extension directory
 2. Download the file HBaseMonitor.zip found in the 'dist' directory into \<machineagent install dir\>/monitors/
 3. Unzip the downloaded file
+4. Open \<machineagent install dir\>/monitors/HBaseMonitor/monitor.xml and configure the HBase credentials
+5. If there are additional HBase servers that need to be monitored, add the additional credentials to \<machineagent install dir\>/monitors/HBaseMonitor/properties.xml
 4. Restart the machineagent
-5. In the AppDynamics Metric Browser, look for: Application Infrastructure Performance | \<Tier\> | Custom Metrics | HBase | Status | Activity
+5. In the AppDynamics Metric Browser, look for: Application Infrastructure Performance | \<Tier\> | Custom Metrics | HBase | \<DB name\>
 
 
 ##Directory Structure
@@ -27,7 +29,7 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 </tr>
 <tr>
 <td class='confluenceTd'> conf </td>
-<td class='confluenceTd'> Contains the monitor.xml </td>
+<td class='confluenceTd'> Contains the monitor.xml and properties.xml </td>
 </tr>
 <tr>
 <td class='confluenceTd'> lib </td>
