@@ -11,13 +11,12 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 
 ![](images/emoticons/warning.gif) The HBase Server must [enable JMX metrics](http://hbase.apache.org/metrics.html).
 
-1. Run 'ant package' from the hbase-monitoring-extension directory
-2. Download the file HBaseMonitor.zip found in the 'dist' directory into \<machineagent install dir\>/monitors/
+1. Run 'mvn clean install' from the hbase-monitoring-extension directory
+2. Download the file HBaseMonitor-{version}.zip found in the 'target' directory into \<machineagent install dir\>/monitors/
 3. Unzip the downloaded file
-4. Open \<machineagent install dir\>/monitors/HBaseMonitor/monitor.xml and configure the HBase credentials
-5. If there are additional HBase servers that need to be monitored, add the additional credentials to \<machineagent install dir\>/monitors/HBaseMonitor/properties.xml
-4. Restart the machineagent
-5. In the AppDynamics Metric Browser, look for: Application Infrastructure Performance | \<Tier\> | Custom Metrics | HBase | \<DB name\>
+4. Open \<machineagent install dir\>/monitors/HBaseMonitor/config.yaml and configure the HBase peoperties. You can provide multiple HBase properties.
+5. Restart the machineagent
+6. In the AppDynamics Metric Browser, look for: Application Infrastructure Performance | \<Tier\> | Custom Metrics | HBase | \<DB name\> | Activity
 
 
 ##Directory Structure
@@ -28,24 +27,20 @@ The HBase custom monitor captures HBase statistics from the JMX server and displ
 <th align="left"> Description </th>
 </tr>
 <tr>
-<td class='confluenceTd'> conf </td>
-<td class='confluenceTd'> Contains the monitor.xml and properties.xml </td>
+<td class='confluenceTd'> src/main/resources/conf/ </td>
+<td class='confluenceTd'> Contains the monitor.xml and config.yaml </td>
 </tr>
 <tr>
-<td class='confluenceTd'> lib </td>
-<td class='confluenceTd'> Contains third-party project references </td>
-</tr>
-<tr>
-<td class='confluenceTd'> src </td>
+<td class='confluenceTd'> src/main/java/ </td>
 <td class='confluenceTd'> Contains source code to the HBase Monitoring Extension </td>
 </tr>
 <tr>
-<td class='confluenceTd'> dist </td>
-<td class='confluenceTd'> Only obtained when using ant. Run 'ant build' to get binaries. Run 'ant package' to get the distributable .zip file. </td>
+<td class='confluenceTd'> target </td>
+<td class='confluenceTd'> Only obtained when using ant. Run 'mvn clean install' to get binaries.</td>
 </tr>
 <tr>
-<td class='confluenceTd'> build.xml </td>
-<td class='confluenceTd'> Ant build script to package the project (required only if changing Java code) </td>
+<td class='confluenceTd'> pom.xml </td>
+<td class='confluenceTd'> maven build script to package the project (required only if changing Java code) </td>
 </tr>
 </tbody>
 </table>
@@ -167,4 +162,4 @@ Find out more in the [AppSphere](http://appsphere.appdynamics.com/t5/Extensions/
 
 ##Support
 
-For any questions or feature request, please contact [AppDynamics Center of Excellence](mailto:ace-request@appdynamics.com).
+For any questions or feature request, please contact [AppDynamics Center of Excellence](mailto:help@appdynamics.com).
