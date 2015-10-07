@@ -1,0 +1,6 @@
+hbase:
+    - dbname: "test"
+      host: "localhost"
+      port: 10101
+      user: "monitorRole"
+      pass: "monitorpass"

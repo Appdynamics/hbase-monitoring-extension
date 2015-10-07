@@ -32,53 +32,56 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-public class HBaseCommunicator implements Callable<HBaseCommunicator> {
-    private Logger logger;
+public class HBaseCommunicator implements Callable<Map<String, Object>> {
+    private Logger logger = Logger.getLogger(HBaseCommunicator.class);
     private static final String HADOOP_REGION_STATISTICS_PATTERN1 = "hadoop:name=regionserver";
     private static final String HADOOP_REGION_STATISTICS_PATTERN2 = "hadoop:service=regionserver";
     private static final String CAMEL_CASE_REGEX = "(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])";
 
-    private final HBaseMonitor.Credential cred;
+    private final HBase hBase;
 
     private MBeanServerConnection connection;
+    private JMXConnector connector;
     private Map<String, Object> hbaseMetrics = new HashMap<String, Object>();
 
 
-    public HBaseCommunicator(final HBaseMonitor.Credential credential, Logger logger) {
-        cred = credential;
-
-        this.logger = logger;
+    public HBaseCommunicator(final HBase hBase) {
+        this.hBase = hBase;
     }
 
+    public Map<String, Object> call() throws Exception {
+        try {
+            if (isNotEmpty(hBase.getHost()) && isNotEmpty(String.valueOf(hBase.getPort()))) {
+                try {
+                    connect();
+                } catch (IOException e) {
+                    logger.error("Failed to connect to " + hBase.getHost() + ":" + hBase.getPort(), e);
+                    return null;
+                }
 
-    @Override
-    public HBaseCommunicator call() throws Exception {
-        if (isNotEmpty(cred.host) && isNotEmpty(cred.port)) {
-            try {
-                connect();
-            } catch (IOException e) {
-                logger.error("Failed to connect to " + cred.host + ":" + cred.port, e);
-                return null;
+                final Set<String> patterns = new HashSet<String>();
+                patterns.add(HADOOP_REGION_STATISTICS_PATTERN1);
+                patterns.add(HADOOP_REGION_STATISTICS_PATTERN2);
+
+                populate(patterns);
+
+                hbaseMetrics.put(getDbname() + "|Uptime", 1);
+                return hbaseMetrics;
+            } else {
+                logger.error("Host or Port not configured. Ignoring the configuration");
+                throw new Exception("Host or Port not configured. Ignoring the configuration");
             }
-
-            final Set<String> patterns = new HashSet<String>();
-            patterns.add(HADOOP_REGION_STATISTICS_PATTERN1);
-            patterns.add(HADOOP_REGION_STATISTICS_PATTERN2);
-
-            populate(patterns);
-            return this;
-        } else {
-            return null;
+        } finally {
+            if(connector != null) {
+                connector.close();
+            }
         }
     }
 
-    public String getDbname() {
-        return cred.dbname;
+    private String getDbname() {
+        return hBase.getDbname();
     }
 
-    public Map<String, Object> getMetrics() {
-        return hbaseMetrics;
-    }
 
     /**
      * Connects to JMX Remote Server to access HBase JMX Metrics
@@ -86,10 +89,13 @@ public class HBaseCommunicator implements Callable<HBaseCommunicator> {
      * @throws IOException Failed to connect to server.
      */
     private void connect() throws IOException {
-        final JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + cred.host + ":" + cred.port + "/jmxrmi");
+        final JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + hBase.getHost() + ":" + hBase.getPort() + "/jmxrmi");
         final Map<String, Object> env = new HashMap<String, Object>();
-        env.put(JMXConnector.CREDENTIALS, new String[]{cred.username, cred.password});
-        connection = JMXConnectorFactory.connect(url, env).getMBeanServerConnection();
+        env.put(JMXConnector.CREDENTIALS, new String[]{hBase.getUser(), hBase.getPass()});
+        connector = JMXConnectorFactory.connect(url, env);
+        if(connector != null) {
+            connection = connector.getMBeanServerConnection();
+        }
     }
 
     /**
@@ -128,7 +134,7 @@ public class HBaseCommunicator implements Callable<HBaseCommunicator> {
                                 if (value instanceof Number) {
                                     String metricName = getTileCase(attributeName);
                                     if (isNotEmpty(metricName)) {
-                                        hbaseMetrics.put("Activity|" + metricName, value);
+                                        hbaseMetrics.put(getDbname()+"|Activity|" + metricName, value);
                                     }
                                 }
                             }
@@ -137,7 +143,7 @@ public class HBaseCommunicator implements Callable<HBaseCommunicator> {
                 }
             }
         } catch (Exception e) {
-            logger.error("Collecting statistics failed for '" + cred.host + ":" + cred.port + "'.", e);
+            logger.error("Collecting statistics failed for '" + hBase.getHost() + ":" + hBase.getPort() + "'.", e);
         }
     }
 
