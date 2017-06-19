@@ -186,10 +186,10 @@ curl http://localhost:9090/api/metric-paths
 
 Always feel free to fork and contribute any changes directly via [GitHub](https://github.com/Appdynamics/hbase-monitoring-extension).
 
-##Community
+## Community
 
 Find out more in the [AppSphere](http://appsphere.appdynamics.com/t5/Extensions/HBase-Monitoring-Extension/idi-p/829) community.
 
-##Support
+## Support
 
 For any questions or feature request, please contact [AppDynamics Center of Excellence](mailto:help@appdynamics.com).
