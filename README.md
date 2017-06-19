@@ -18,13 +18,13 @@ To know more about JMX, please follow the below link
 ## Troubleshooting steps ##
 Before configuring the extension, please make sure to run the below steps to check if the set up is correct.
 
-1. Telnet into your coherence server from the box where the extension is deployed.
+1. Telnet into your HBaseMonitor server from the box where the extension is deployed.
        telnet <hostname> <port>
 
        <port> - It is the jmxremote.port specified.
         <hostname> - IP address
 
-    If telnet works, it confirm the access to the coherence server.
+    If telnet works, it confirm the access to the HBaseMonitor server.
 
 
 2. Start jconsole. Jconsole comes as a utility with installed jdk. After giving the correct host and port , check if HBase mbean shows up.
