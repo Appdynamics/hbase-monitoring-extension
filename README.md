@@ -2,157 +2,187 @@
 
 This extension works only with the standalone machine agent.
 
-##Use Case
+## Use Case
 
 The HBase custom monitor captures HBase statistics from the JMX server and displays them in the AppDynamics Metric Browser.
 
+## Prerequisites ##
 
-##Installation
+The HBase Server must [enable JMX metrics](http://hbase.apache.org/metrics.html).
 
-![](images/emoticons/warning.gif) The HBase Server must [enable JMX metrics](http://hbase.apache.org/metrics.html).
+To know more about JMX, please follow the below link
+ 
+ http://docs.oracle.com/javase/6/docs/technotes/guides/management/agent.html
+
+
+## Troubleshooting steps ##
+Before configuring the extension, please make sure to run the below steps to check if the set up is correct.
+
+1. Telnet into your coherence server from the box where the extension is deployed.
+       telnet <hostname> <port>
+
+       <port> - It is the jmxremote.port specified.
+        <hostname> - IP address
+
+    If telnet works, it confirm the access to the coherence server.
+
+
+2. Start jconsole. Jconsole comes as a utility with installed jdk. After giving the correct host and port , check if HBase mbean shows up.
+
+3. It is a good idea to match the mbean configuration in the config.yml against the jconsole. JMX is case sensitive so make
+sure the config matches exact.
+
+## Installation
 
 1. Run 'mvn clean install' from the hbase-monitoring-extension directory
 2. Download the file HBaseMonitor-{version}.zip found in the 'target' directory into \<machineagent install dir\>/monitors/
 3. Unzip the downloaded file
-4. Open \<machineagent install dir\>/monitors/HBaseMonitor/config.yaml and configure the HBase peoperties. You can provide multiple HBase properties.
+4. Open \<machineagent install dir\>/monitors/HBaseMonitor/config.yaml and configure the HBase server peoperties. You can provide multiple HBase server properties.
 5. Restart the machineagent
-6. In the AppDynamics Metric Browser, look for: Application Infrastructure Performance | \<Tier\> | Custom Metrics | HBase | \<DB name\> | Activity
+6. In the AppDynamics Metric Browser, look for: Application Infrastructure Performance | \<Tier\> | Custom Metrics | HBase | 
 
+## Configuration
 
-##Directory Structure
+Note : Please make sure to not use tab (\t) while editing yaml files. You may want to validate the yaml file using a [yaml validator](http://yamllint.com/)
 
-<table><tbody>
-<tr>
-<th align="left"> File/Folder </th>
-<th align="left"> Description </th>
-</tr>
-<tr>
-<td class='confluenceTd'> src/main/resources/conf/ </td>
-<td class='confluenceTd'> Contains the monitor.xml and config.yaml </td>
-</tr>
-<tr>
-<td class='confluenceTd'> src/main/java/ </td>
-<td class='confluenceTd'> Contains source code to the HBase Monitoring Extension </td>
-</tr>
-<tr>
-<td class='confluenceTd'> target </td>
-<td class='confluenceTd'> Only obtained when using ant. Run 'mvn clean install' to get binaries.</td>
-</tr>
-<tr>
-<td class='confluenceTd'> pom.xml </td>
-<td class='confluenceTd'> maven build script to package the project (required only if changing Java code) </td>
-</tr>
-</tbody>
-</table>
+1. Configure the HBase instances by editing the config.yml file in `<MACHINE_AGENT_HOME>/monitors/HBaseMonitor/`.
+2. Below is the default config.yml which has metrics configured already
+   For eg.
+ 
+ ```
+   ### ANY CHANGES TO THIS FILE DOES NOT REQUIRE A RESTART ###
 
+#This will create this metric in all the tiers, under this path
+#metricPrefix: Custom Metrics|HBase
 
-##Metrics
+#This will create it in specific Tier/Component. Make sure to replace <COMPONENT_ID> with the appropriate one from your environment.
+#To find the <COMPONENT_ID> in your environment, please follow the screenshot https://docs.appdynamics.com/display/PRO42/Build+a+Monitoring+Extension+Using+Java
+metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
 
+# List of HBase Instances
+instances:
+  - displayName: "Local HBase"  #displayName is a REQUIRED field for  level metrics.
+    host: ""
+    port:
+    username: ""
+    # Provide password or encryptedPassword
+    password: ""
+    encryptedPassword:
+    regionServers:
+       - displayName: "RegionServer1"
+         host: ""
+         port:
+         username: ""
+         # Provide password or encryptedPassword
+         password: ""
+         encryptedPassword:
+       - displayName: "RegionServer2"
+         host: ""
+         port: 10101
+         username: ""
+         # Provide password or encryptedPassword
+         password: ""
+         encryptedPassword:
+       - displayName: "RegionServer3"
+         host: ""
+         port:
+         username: ""
+         # Provide password or encryptedPassword
+         password: ""
+         encryptedPassword:
+         
+encryptionKey:
 
-<table class='confluenceTable'><tbody>
-<tr>
-<th align="left"> Metric Name </th>
-<th align="left"> Description </th>
-</tr>
-<tr>
-<td align="left"> Block Cache Count </td>
-<td align="left"> Block cache item count in memory. This is the number of blocks of StoreFiles (HFiles) in the cache. </td>
-</tr>
-<tr>
-<td align="left"> Block Cache Evicted Count </td>
-<td align="left"> Number of blocks that had to be evicted from the block cache due to heap size constraints. </td>
-</tr>
-<tr>
-<td align="left"> Block Cache Free </td>
-<td align="left"> Block cache memory available (bytes). </td>
-</tr>
-<tr>
-<td align="left"> Block Cache Hit Caching Ratio </td>
-<td align="left"> Block cache hit caching ratio (0 to 100). The cache-hit ratio for reads configured to look in the cache (i.e., cacheBlocks=true). </td>
-</tr>
-<tr>
-<td align="left"> Block Cache Hit Count </td>
-<td align="left"> Number of blocks of StoreFiles (HFiles) read from the cache. </td>
-</tr>
-<tr>
-<td align="left"> Block Cache Hit Ratio </td>
-<td align="left"> Block cache hit ratio (0 to 100). Includes all read requests, although those with cacheBlocks=false will always read from disk and be counted as a "cache miss". </td>
-</tr>
-<tr>
-<td align="left"> Block Cache Miss Count </td>
-<td align="left"> Number of blocks of StoreFiles (HFiles) requested but not read from the cache. </td>
-</tr>
-<tr>
-<td align="left"> Block Cache Size </td>
-<td align="left"> Block cache size in memory (bytes). i.e., memory in use by the BlockCache </td>
-</tr>
-<tr>
-<td align="left"> Compaction Queue Size </td>
-<td align="left"> Size of the compaction queue. This is the number of Stores in the RegionServer that have been targeted for compaction. </td>
-</tr>
-<tr>
-<td align="left"> Flush Queue Size </td>
-<td align="left"> Number of enqueued regions in the MemStore awaiting flush. </td>
-</tr>
-<tr>
-<td align="left"> Filesystem Read Latency Avg Time </td>
-<td align="left"> Filesystem read latency (ms). This is the average time to read from HDFS. </td>
-</tr>
-<tr>
-<td align="left"> Filesystem Read Latency Operations </td>
-<td align="left"> Filesystem read operations. </td>
-</tr>
-<tr>
-<td align="left"> Filesystem Sync Latency Avg Time </td>
-<td align="left"> Filesystem sync latency (ms). Latency to sync the write-ahead log records to the filesystem. </td>
-</tr>
-<tr>
-<td align="left"> Filesystem Sync Latency Operations </td>
-<td align="left"> Number of operations to sync the write-ahead log records to the filesystem. </td>
-</tr>
-<tr>
-<td align="left"> Filesystem Write Latency Avg Time </td>
-<td align="left"> Filesystem write latency (ms). Total latency for all writers, including StoreFiles and write-head log. </td>
-</tr>
-<tr>
-<td align="left"> Filesystem Write Latency Operations </td>
-<td align="left"> Number of filesystem write operations, including StoreFiles and write-ahead log. </td>
-</tr>
-<tr>
-<td align="left"> Memstore Size (MB) </td>
-<td align="left"> Sum of all the memstore sizes in this RegionServer (MB) </td>
-</tr>
-<tr>
-<td align="left"> Regions </td>
-<td align="left"> Number of regions served by the RegionServer </td>
-</tr>
-<tr>
-<td align="left"> Requests </td>
-<td align="left"> Total number of read and write requests. Requests correspond to RegionServer RPC calls, thus a single Get will result in 1 request, but a Scan with caching set to 1000 will result in 1 request for each 'next' call (i.e., not each row). A bulk-load request will constitute 1 request per HFile. </td>
-</tr>
-<tr>
-<td align="left"> Store File Index Size (MB) </td>
-<td align="left"> Sum of all the StoreFile index sizes in this RegionServer (MB) </td>
-</tr>
-<tr>
-<td align="left"> Stores </td>
-<td align="left"> Number of Stores open on the RegionServer. A Store corresponds to a ColumnFamily. For example, if a table (which contains the column family) has 3 regions on a RegionServer, there will be 3 stores open for that column family. </td>
-</tr>
-<tr>
-<td align="left"> Store Files </td>
-<td align="left"> Number of StoreFiles open on the RegionServer. A store may have more than one StoreFile (HFile). </td>
-</tr>
-</tbody>
-</table>
+# number of concurrent tasks.
+# This doesn't need to be changed unless many instances are configured
+numberOfThreads: 10
 
+# The configuration of different metrics from various mbeans of HBase server
+mbeans:
+   # Common mbeans which are applicable to both master and region server
+   common:
+      - objectName: "Hadoop:service=HBase,name=JvmMetrics"
+        metrics:
+          include:
+            - MemHeapCommittedM : "MemHeapCommittedM"
+            - MemHeapMaxM : "MemHeapMaxM"
 
-##Metric Browser
+   # Master specific mbeans
+   master:
+      # This mbean is to get cluster related metrics.
+      - objectName: "Hadoop:service=HBase,name=Master,sub=AssignmentManger"
+        metrics:
+          include:
+            - BulkAssign_max : "BulkAssign_max"  # If this attribute is removed, nodeIds will be seen in the metric paths and not their corressponding names.
+            - Assign_max : "Assign_max"
 
+      - objectName: "Hadoop:service=HBase,name=Master,sub=Server"
+        #aggregation: true #uncomment this only if you want the extension to do aggregation for all the metrics in this mbean for a cluster
+        metrics:
+          include:
+            - averageLoad : "averageLoad" #The rough number of cache hits since the last time statistics were reset. A cache hit is a read operation invocation (that is, get()) for which an entry exists in this map.
+            - clusterRequests : "clusterRequests" #The rough number of cache misses since the last time statistics were reset.
+            - numDeadRegionServers : "numDeadRegionServers" #The number of prune operations since the last time statistics were reset. A prune operation occurs every time the cache reaches its high watermark as specified by the HighUnits attribute.
+            - numRegionServers : "numRegionServers" #The total number of get() operations since the last time statistics were reset.
+   # region server specific mbeans
+   regionServer:
+      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=Server"
+        aggregation: true
+        metricType: "OBSERVATION AVERAGE COLLECTIVE"
+        metrics:
+          include:
+            - storeCount : "storeCount"
+            - storeFileCount : "storeFileCount"
+            - storeFileIndexSize : "storeFileIndexSize"
+      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=IPC"
+        aggregation: false
+        metricType: "OBSERVATION AVERAGE COLLECTIVE"
+        metrics:
+          include:
+            - TotalCallTime_num_ops : "TotalCallTime_num_ops"
+            - exceptions : "exceptions"
+              aggregation: true
+            - ProcessCallTime_num_ops : "ProcessCallTime_num_ops"
+      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=WAL"
+       #aggregation: true #uncomment this only if you want the extension to do aggregation for all the metrics in this mbean for a cluster
+        metrics:
+          include:
+            - AppendSize_num_ops : "AppendSize_num_ops"
+            - AppendSize_min : "AppendSize_min"
+            - AppendSize_max : "AppendSize_max"
+```
+The objectNames mentioned in the above yaml may not match your environment exactly. Please use jconsole to extract the objectName and configure it accordingly in the config.yaml. 
 
-![](http://appsphere.appdynamics.com/t5/image/serverpage/image-id/71i2A4082FA8329124C/image-size/original?v=mpbl-1&px=-1)
+3. Configure the path to the config.yml file by editing the <task-arguments> in the monitor.xml file in the `<MACHINE_AGENT_HOME>/monitors/HBaseMonitor/` directory. Below is the sample
+   For Windows, make sure you enter the right path.
+     ```
+     <task-arguments>
+         <!-- config file-->
+         <argument name="config-file" is-required="true" default-value="monitors/HBaseMonitor/config.yml" />
+          ....
+     </task-arguments>
+    ```
 
+## Workbench
 
-##Contributing
+Workbench is a feature by which you can preview the metrics before registering it with the controller. This is useful if you want to fine tune the configurations. Workbench is embedded into the extension jar.
+
+To use the workbench
+1. Follow all the installation steps
+2. Start the workbench with the command
+`java -jar /path/to/MachineAgent/monitors/F5Monitor/f5-monitoring-extension.jar`
+This starts an http server at http://host:9090/. This can be accessed from the browser.
+3. If the server is not accessible from outside/browser, you can use the following end points to see the list of registered metrics and errors.
+```
+#Get the stats
+curl http://localhost:9090/api/stats
+#Get the registered metrics
+curl http://localhost:9090/api/metric-paths
+```
+4. You can make the changes to config.yml and validate it from the browser or the API
+5. Once the configuration is complete, you can kill the workbench and start the Machine Agent
+
+## Contributing
 
 Always feel free to fork and contribute any changes directly via [GitHub](https://github.com/Appdynamics/hbase-monitoring-extension).
 
