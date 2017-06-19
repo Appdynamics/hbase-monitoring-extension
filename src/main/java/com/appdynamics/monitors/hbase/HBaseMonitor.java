@@ -1,12 +1,12 @@
 /**
  * Copyright 2013 AppDynamics
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,160 +17,123 @@
 
 package com.appdynamics.monitors.hbase;
 
-import com.appdynamics.extensions.ArgumentsValidator;
-import com.appdynamics.extensions.PathResolver;
-import com.appdynamics.extensions.yml.YmlReader;
-import com.google.common.base.Strings;
+import com.appdynamics.extensions.conf.MonitorConfiguration;
+import com.appdynamics.extensions.util.MetricWriteHelper;
+import com.appdynamics.extensions.util.MetricWriteHelperFactory;
 import com.singularity.ee.agent.systemagent.api.AManagedMonitor;
-import com.singularity.ee.agent.systemagent.api.MetricWriter;
 import com.singularity.ee.agent.systemagent.api.TaskExecutionContext;
 import com.singularity.ee.agent.systemagent.api.TaskOutput;
 import com.singularity.ee.agent.systemagent.api.exception.TaskExecutionException;
-import org.apache.log4j.Logger;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.log4j.PatternLayout;
+import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionService;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class HBaseMonitor extends AManagedMonitor {
-    private static Logger logger = Logger.getLogger(HBaseMonitor.class);
-
-    private static final String CUSTOM_METRICS_H_BASE_STATUS = "Custom Metrics|HBase|";
-
+    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HBaseMonitor.class);
     private static final String CONFIG_ARG = "config-file";
+    private static final String METRIC_PREFIX = "Custom Metrics|HBase|";
 
-    private static final Map<String, String> defaultArgs = new HashMap<String, String>() {{
-        put(CONFIG_ARG, "monitors/HBaseMonitor/config.yaml");
-    }};
+
+    private boolean initialized;
+    private MonitorConfiguration configuration;
 
     public HBaseMonitor() {
-        String msg = getVersionInfo();
-        logger.info(msg);
-        System.out.println(msg);
+        System.out.println(logVersion());
     }
 
-    private String getVersionInfo() {
-        String details = HBaseMonitor.class.getPackage().getImplementationTitle();
-        return "Using Monitor Version [" + details + "]";
+    public TaskOutput execute(Map<String, String> taskArgs, TaskExecutionContext out) throws TaskExecutionException {
+        logVersion();
+        if (!initialized) {
+            initialize(taskArgs);
+        }
+        logger.debug("The raw arguments are {}", taskArgs);
+        configuration.executeTask();
+        logger.info("HBase monitor run completed successfully.");
+        return new TaskOutput("HBase monitor run completed successfully.");
+
     }
 
-    /**
-     * Main execution method that uploads the metrics to the AppDynamics Controller
-     *
-     * @see com.singularity.ee.agent.systemagent.api.ITask#execute(java.util.Map, com.singularity.ee.agent.systemagent.api.TaskExecutionContext)
-     */
-    public TaskOutput execute(Map<String, String> args, TaskExecutionContext arg1) throws TaskExecutionException {
-        try {
+    private void initialize(Map<String, String> taskArgs) {
+        if (!initialized) {
+            //read the config.
+            final String configFilePath = taskArgs.get(CONFIG_ARG);
+            MetricWriteHelper metricWriteHelper = MetricWriteHelperFactory.create(this);
+            MonitorConfiguration conf = new MonitorConfiguration(METRIC_PREFIX, new TaskRunnable(), metricWriteHelper);
+            conf.setConfigYml(configFilePath);
+            conf.checkIfInitialized(MonitorConfiguration.ConfItem.CONFIG_YML, MonitorConfiguration.ConfItem.EXECUTOR_SERVICE,
+                    MonitorConfiguration.ConfItem.METRIC_PREFIX, MonitorConfiguration.ConfItem.METRIC_WRITE_HELPER);
+            this.configuration = conf;
+            initialized = true;
+        }
+    }
 
+    private class TaskRunnable implements Runnable {
 
-            logger.info("HBase monitor started collecting stats");
-            logger.info(getVersionInfo());
-
-            args = ArgumentsValidator.validateArguments(args, defaultArgs);
-
-            String configFilename = getConfigFilename(args.get(CONFIG_ARG));
-            Configuration config = YmlReader.readFromFile(configFilename, Configuration.class);
-
-            List<HBase> hbaseConfig = config.getHbase();
-
-            if(hbaseConfig == null || hbaseConfig.size() <= 0) {
-                logger.info("No HBase configuration found. Exiting the process");
-                throw new TaskExecutionException("No HBase configuration found. Exiting the process");
-            }
-
-            ExecutorService executor = Executors.newFixedThreadPool(hbaseConfig.size());
-
-            CompletionService<Map<String, Object>> threadPool =
-                    new ExecutorCompletionService<Map<String, Object>>(executor);
-
-            for (HBase hBase : hbaseConfig) {
-                threadPool.submit(new HBaseCommunicator(hBase));
-            }
-
-            for (int i = 0; i < hbaseConfig.size(); i++) {
-                try {
-                    Map<String, Object> metrics = threadPool.take().get();
-
-
-                        for (Map.Entry<String, Object> metric : metrics.entrySet()) {
-                            printMetric(metric.getKey(), metric.getValue(),
-                                    MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION,
-                                    MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT,
-                                    MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_COLLECTIVE);
+        public void run() {
+            Map<String, ?> config = configuration.getConfigYml();
+            if (config != null) {
+                List<Map> servers = (List<Map>) config.get(ConfigConstants.INSTANCES);
+                if (servers != null && !servers.isEmpty()) {
+                    for (Map server : servers) {
+                        try {
+                            HBaseMonitorTask task = createTask(server);
+                            configuration.getExecutorService().execute(task);
+                        } catch (IOException e) {
+                            logger.error("Cannot construct JMX uri for {}", Util.convertToString(server.get(ConfigConstants.DISPLAY_NAME), ""));
                         }
 
-                } catch (Exception e) {
-                    logger.error("Failed to get metrics", e);
+                    }
+                } else {
+                    logger.error("There are no servers configured");
                 }
+            } else {
+                logger.error("The config.yml is not loaded due to previous errors.The task will not run");
             }
-            executor.shutdown();
-
-            logger.info("HBase monitor finished collecting stats");
-
-            return new TaskOutput("HBase Metric Upload Complete");
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.error(e.getMessage(), e);
-            return new TaskOutput("HBase Metric Upload Failed!");
         }
     }
 
-    private String getConfigFilename(String filename) {
-        if (filename == null) {
-            return "";
-        }
-        // for absolute paths
-        if (new File(filename).exists()) {
-            return filename;
-        }
-        // for relative paths
-        File jarPath = PathResolver.resolveDirectory(AManagedMonitor.class);
-        String configFileName = "";
-        if (!Strings.isNullOrEmpty(filename)) {
-            configFileName = jarPath + File.separator + filename;
-        }
-        return configFileName;
+    private HBaseMonitorTask createTask(Map server) throws IOException {
+        return new HBaseMonitorTask.Builder()
+                .metricPrefix(configuration.getMetricPrefix())
+                .metricWriter(configuration.getMetricWriter())
+                .server(server)
+                .mbeans((Map<String, List<Map>>) configuration.getConfigYml().get(ConfigConstants.MBEANS))
+                .build();
     }
 
-    /**
-     * Returns the metric to the AppDynamics Controller.
-     *
-     * @param metricName  Name of the Metric
-     * @param metricValue Value of the Metric
-     * @param aggregation Average OR Observation OR Sum
-     * @param timeRollup  Average OR Current OR Sum
-     * @param cluster     Collective OR Individual
-     */
-    private void printMetric(
-            String metricName,
-            Object metricValue,
-            String aggregation,
-            String timeRollup,
-            String cluster) {
 
-        logger.debug("Sending [" + getMetricPrefix() + metricName + "]");
-
-        MetricWriter metricWriter = getMetricWriter(getMetricPrefix() + metricName, aggregation, timeRollup, cluster);
-        if (metricValue instanceof Double) {
-            metricWriter.printMetric(String.valueOf(Math.round((Double) metricValue)));
-        } else if (metricValue instanceof Float) {
-            metricWriter.printMetric(String.valueOf(Math.round((Float) metricValue)));
-        } else {
-            metricWriter.printMetric(String.valueOf(metricValue));
-        }
+    private static String getImplementationVersion() {
+        return HBaseMonitor.class.getPackage().getImplementationTitle();
     }
 
-    /**
-     * Metric Prefix
-     *
-     * @return Metric Location in the Controller (String)
-     */
-    private static String getMetricPrefix() {
-        return CUSTOM_METRICS_H_BASE_STATUS;
+    private String logVersion() {
+        String msg = "Using Monitor Version [" + getImplementationVersion() + "]";
+        logger.info(msg);
+        return msg;
+    }
+
+    public static void main(String[] args) throws TaskExecutionException {
+
+        ConsoleAppender ca = new ConsoleAppender();
+        ca.setWriter(new OutputStreamWriter(System.out));
+        ca.setLayout(new PatternLayout("%-5p [%t]: %m%n"));
+        ca.setThreshold(Level.DEBUG);
+
+        org.apache.log4j.Logger.getRootLogger().addAppender(ca);
+
+        HBaseMonitor monitor = new HBaseMonitor();
+
+        Map<String, String> taskArgs = new HashMap<String, String>();
+        taskArgs.put(CONFIG_ARG, "/Users/Muddam/AppDynamics/Code/extensions/hbase-monitoring-extension/src/main/resources/conf/config.yaml");
+
+        monitor.execute(taskArgs, null);
+
     }
 }

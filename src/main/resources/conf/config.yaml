@@ -1,6 +1,100 @@
-hbase:
-    - dbname: "test"
-      host: "localhost"
-      port: 10101
-      user: "monitorRole"
-      pass: "monitorpass"
+### ANY CHANGES TO THIS FILE DOES NOT REQUIRE A RESTART ###
+
+#This will create this metric in all the tiers, under this path
+#metricPrefix: Custom Metrics|HBase
+
+#This will create it in specific Tier/Component. Make sure to replace <COMPONENT_ID> with the appropriate one from your environment.
+#To find the <COMPONENT_ID> in your environment, please follow the screenshot https://docs.appdynamics.com/display/PRO42/Build+a+Monitoring+Extension+Using+Java
+metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
+
+# List of Coherence Instances
+instances:
+  - displayName: "Local HBase"  #displayName is a REQUIRED field for  level metrics.
+    host: ""
+    port:
+    username: ""
+    # Provide password or encryptedPassword
+    password: ""
+    encryptedPassword:
+    regionServers:
+       - displayName: "RegionServer1"
+         host: ""
+         port:
+         username: ""
+         # Provide password or encryptedPassword
+         password: ""
+         encryptedPassword:
+       - displayName: "RegionServer2"
+         host: ""
+         port: 10101
+         username: ""
+         # Provide password or encryptedPassword
+         password: ""
+         encryptedPassword:
+       - displayName: "RegionServer3"
+         host: ""
+         port:
+         username: ""
+         # Provide password or encryptedPassword
+         password: ""
+         encryptedPassword:
+
+
+encryptionKey:
+
+# number of concurrent tasks.
+# This doesn't need to be changed unless many instances are configured
+numberOfThreads: 10
+
+
+# The configuration of different metrics from various mbeans of HBase server
+mbeans:
+   # Common mbeans which are applicable to both master and region server
+   common:
+      - objectName: "Hadoop:service=HBase,name=JvmMetrics"
+        metrics:
+          include:
+            - MemHeapCommittedM : "MemHeapCommittedM"
+            - MemHeapMaxM : "MemHeapMaxM"
+
+   # Master specific mbeans
+   master:
+      # This mbean is to get cluster related metrics.
+      - objectName: "Hadoop:service=HBase,name=Master,sub=AssignmentManger"
+        metrics:
+          include:
+            - BulkAssign_max : "BulkAssign_max"  # If this attribute is removed, nodeIds will be seen in the metric paths and not their corressponding names.
+            - Assign_max : "Assign_max"
+
+      - objectName: "Hadoop:service=HBase,name=Master,sub=Server"
+        #aggregation: true #uncomment this only if you want the extension to do aggregation for all the metrics in this mbean for a cluster
+        metrics:
+          include:
+            - averageLoad : "averageLoad" #The rough number of cache hits since the last time statistics were reset. A cache hit is a read operation invocation (that is, get()) for which an entry exists in this map.
+            - clusterRequests : "clusterRequests" #The rough number of cache misses since the last time statistics were reset.
+            - numDeadRegionServers : "numDeadRegionServers" #The number of prune operations since the last time statistics were reset. A prune operation occurs every time the cache reaches its high watermark as specified by the HighUnits attribute.
+            - numRegionServers : "numRegionServers" #The total number of get() operations since the last time statistics were reset.
+   # region server specific mbeans
+   regionServer:
+      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=Server"
+        aggregation: true
+        metricType: "OBSERVATION AVERAGE COLLECTIVE"
+        metrics:
+          include:
+            - storeCount : "storeCount"
+            - storeFileCount : "storeFileCount"
+            - storeFileIndexSize : "storeFileIndexSize"
+      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=IPC"
+        aggregation: true
+        metricType: "OBSERVATION AVERAGE COLLECTIVE"
+        metrics:
+          include:
+            - TotalCallTime_num_ops : "TotalCallTime_num_ops"
+            - exceptions : "exceptions"
+            - ProcessCallTime_num_ops : "ProcessCallTime_num_ops"
+      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=WAL"
+        metrics:
+          include:
+            - AppendSize_num_ops : "AppendSize_num_ops"
+            - AppendSize_min : "AppendSize_min"
+            - AppendSize_max : "AppendSize_max"
