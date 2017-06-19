@@ -85,14 +85,16 @@ mbeans:
             - storeFileCount : "storeFileCount"
             - storeFileIndexSize : "storeFileIndexSize"
       - objectName: "Hadoop:service=HBase,name=RegionServer,sub=IPC"
-        aggregation: true
+        aggregation: false
         metricType: "OBSERVATION AVERAGE COLLECTIVE"
         metrics:
           include:
             - TotalCallTime_num_ops : "TotalCallTime_num_ops"
             - exceptions : "exceptions"
+              aggregation: true
             - ProcessCallTime_num_ops : "ProcessCallTime_num_ops"
       - objectName: "Hadoop:service=HBase,name=RegionServer,sub=WAL"
+       #aggregation: true #uncomment this only if you want the extension to do aggregation for all the metrics in this mbean for a cluster
         metrics:
           include:
             - AppendSize_num_ops : "AppendSize_num_ops"
