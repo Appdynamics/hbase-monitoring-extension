@@ -7,7 +7,7 @@
 #To find the <COMPONENT_ID> in your environment, please follow the screenshot https://docs.appdynamics.com/display/PRO42/Build+a+Monitoring+Extension+Using+Java
 metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
 
-# List of Coherence Instances
+# List of HBase Instances
 instances:
   - displayName: "Local HBase"  #displayName is a REQUIRED field for  level metrics.
     host: ""
