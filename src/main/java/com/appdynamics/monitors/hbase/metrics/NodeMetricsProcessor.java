@@ -55,37 +55,42 @@ public class NodeMetricsProcessor {
 
         List<Metric> metrics = Lists.newArrayList();
 
-        List<Map> masterMbeans = new ArrayList();
-        masterMbeans.addAll(configMBeans.get("common"));
-        masterMbeans.addAll(configMBeans.get("master"));
-
-        List<Map> regionServerMbeans = new ArrayList<Map>();
-        regionServerMbeans.addAll(configMBeans.get("common"));
-        regionServerMbeans.addAll(configMBeans.get("regionServer"));
 
         JMXConnectionAdapter masterJmxAdapter = getJMXConnectionAdapter(server);
-        JMXConnector masterJmxConnection = masterJmxAdapter.open();
+        JMXConnector masterJmxConnection = null;
+
+        if (masterJmxAdapter != null) {
+            masterJmxConnection = masterJmxAdapter.open();
+        }
 
         try {
-            for (Map aConfigMBean : masterMbeans) {
+            if (masterJmxConnection != null) {
 
-                String configObjectName = Util.convertToString(aConfigMBean.get(ConfigConstants.OBJECT_NAME), "");
-                logger.debug("Processing mbean %s from the config file", configObjectName);
-                java.util.Map<String, MetricProperties> metricPropsMap = propertyBuilder.build(aConfigMBean);
+                List<Map> masterMbeans = new ArrayList();
+                masterMbeans.addAll(configMBeans.get("common"));
+                masterMbeans.addAll(configMBeans.get("master"));
 
-                //Each mbean mentioned in the config.yaml can fetch multiple object instances. Metrics need to be extracted
-                //from each object instance separately.
-                Set<ObjectInstance> objectInstances = masterJmxAdapter.queryMBeans(masterJmxConnection, ObjectName.getInstance(configObjectName));
-                for (ObjectInstance instance : objectInstances) {
-                    List<String> metricNamesDictionary = masterJmxAdapter.getReadableAttributeNames(masterJmxConnection, instance);
-                    List<String> metricNamesToBeExtracted = applyFilters(aConfigMBean, metricNamesDictionary);
-                    List<Attribute> attributes = masterJmxAdapter.getAttributes(masterJmxConnection, instance.getObjectName(), metricNamesToBeExtracted.toArray(new String[metricNamesToBeExtracted.size()]));
-                    //get node metrics
-                    collectMaster(metrics, attributes, instance, metricPropsMap);
+
+                for (Map aConfigMBean : masterMbeans) {
+
+                    String configObjectName = Util.convertToString(aConfigMBean.get(ConfigConstants.OBJECT_NAME), "");
+                    logger.debug("Processing mbean %s from the config file", configObjectName);
+                    java.util.Map<String, MetricProperties> metricPropsMap = propertyBuilder.build(aConfigMBean);
+
+                    //Each mbean mentioned in the config.yaml can fetch multiple object instances. Metrics need to be extracted
+                    //from each object instance separately.
+                    Set<ObjectInstance> objectInstances = masterJmxAdapter.queryMBeans(masterJmxConnection, ObjectName.getInstance(configObjectName));
+                    for (ObjectInstance instance : objectInstances) {
+                        List<String> metricNamesDictionary = masterJmxAdapter.getReadableAttributeNames(masterJmxConnection, instance);
+                        List<String> metricNamesToBeExtracted = applyFilters(aConfigMBean, metricNamesDictionary);
+                        List<Attribute> attributes = masterJmxAdapter.getAttributes(masterJmxConnection, instance.getObjectName(), metricNamesToBeExtracted.toArray(new String[metricNamesToBeExtracted.size()]));
+                        //get node metrics
+                        collectMaster(metrics, attributes, instance, metricPropsMap);
+                    }
                 }
             }
 
-            getRegionServerMetrics(server, regionServerMbeans, metrics);
+            getRegionServerMetrics(server, metrics);
 
         } catch (MalformedObjectNameException e) {
             logger.error("Illegal object name", e);
@@ -108,32 +113,47 @@ public class NodeMetricsProcessor {
         return metrics;
     }
 
-    private void getRegionServerMetrics(Map server, List<Map> regionServerMbeans, List<Metric> metrics) throws Exception {
+    private void getRegionServerMetrics(Map server, List<Metric> metrics) throws Exception {
         List<Map> regionServers = (List<Map>) server.get(ConfigConstants.REGIONSERVERS);
+
+        if (regionServers == null || regionServers.size() <= 0) {
+            logger.info("No region servers defined. Not collecting region server metrics");
+            return;
+        }
+
+        List<Map> regionServerMbeans = new ArrayList<Map>();
+        regionServerMbeans.addAll(configMBeans.get("common"));
+        regionServerMbeans.addAll(configMBeans.get("regionServer"));
 
         for (Map regionServer : regionServers) {
 
             String displayName = Util.convertToString(regionServer.get(ConfigConstants.DISPLAY_NAME), "");
 
             JMXConnectionAdapter regionServerJmxAdapter = getJMXConnectionAdapter(regionServer);
-            JMXConnector regionServerJmxConnection = regionServerJmxAdapter.open();
+            JMXConnector regionServerJmxConnection = null;
+
+            if (regionServerJmxAdapter != null) {
+                regionServerJmxConnection = regionServerJmxAdapter.open();
+            }
 
             try {
-                for (Map aConfigMBean : regionServerMbeans) {
+                if (regionServerJmxConnection != null) {
+                    for (Map aConfigMBean : regionServerMbeans) {
 
-                    String configObjectName = Util.convertToString(aConfigMBean.get(ConfigConstants.OBJECT_NAME), "");
-                    logger.debug("Processing mbean %s from the config file", configObjectName);
-                    java.util.Map<String, MetricProperties> metricPropsMap = propertyBuilder.build(aConfigMBean);
+                        String configObjectName = Util.convertToString(aConfigMBean.get(ConfigConstants.OBJECT_NAME), "");
+                        logger.debug("Processing mbean %s from the config file", configObjectName);
+                        java.util.Map<String, MetricProperties> metricPropsMap = propertyBuilder.build(aConfigMBean);
 
-                    //Each mbean mentioned in the config.yaml can fetch multiple object instances. Metrics need to be extracted
-                    //from each object instance separately.
-                    Set<ObjectInstance> objectInstances = regionServerJmxAdapter.queryMBeans(regionServerJmxConnection, ObjectName.getInstance(configObjectName));
-                    for (ObjectInstance instance : objectInstances) {
-                        List<String> metricNamesDictionary = regionServerJmxAdapter.getReadableAttributeNames(regionServerJmxConnection, instance);
-                        List<String> metricNamesToBeExtracted = applyFilters(aConfigMBean, metricNamesDictionary);
-                        List<Attribute> attributes = regionServerJmxAdapter.getAttributes(regionServerJmxConnection, instance.getObjectName(), metricNamesToBeExtracted.toArray(new String[metricNamesToBeExtracted.size()]));
-                        //get node metrics
-                        collectRegionServer(metrics, attributes, instance, metricPropsMap, displayName);
+                        //Each mbean mentioned in the config.yaml can fetch multiple object instances. Metrics need to be extracted
+                        //from each object instance separately.
+                        Set<ObjectInstance> objectInstances = regionServerJmxAdapter.queryMBeans(regionServerJmxConnection, ObjectName.getInstance(configObjectName));
+                        for (ObjectInstance instance : objectInstances) {
+                            List<String> metricNamesDictionary = regionServerJmxAdapter.getReadableAttributeNames(regionServerJmxConnection, instance);
+                            List<String> metricNamesToBeExtracted = applyFilters(aConfigMBean, metricNamesDictionary);
+                            List<Attribute> attributes = regionServerJmxAdapter.getAttributes(regionServerJmxConnection, instance.getObjectName(), metricNamesToBeExtracted.toArray(new String[metricNamesToBeExtracted.size()]));
+                            //get node metrics
+                            collectRegionServer(metrics, attributes, instance, metricPropsMap, displayName);
+                        }
                     }
                 }
             } finally {
@@ -154,12 +174,24 @@ public class NodeMetricsProcessor {
 
         String serviceUrl = Util.convertToString(configMap.get(ConfigConstants.SERVICE_URL), "");
         String host = Util.convertToString(configMap.get(ConfigConstants.HOST), "");
+
+        if (Strings.isNullOrEmpty(serviceUrl) && Strings.isNullOrEmpty(host)) {
+            logger.info("JMX details not provided, not creating connection");
+            return null;
+        }
+
         String portStr = Util.convertToString(configMap.get(ConfigConstants.PORT), "");
         int port = portStr != null ? Integer.parseInt(portStr) : -1;
         String username = Util.convertToString(configMap.get(ConfigConstants.USERNAME), "");
         String password = getPassword(configMap);
 
-        return JMXConnectionAdapter.create(serviceUrl, host, port, username, password);
+        try {
+            JMXConnectionAdapter jmxConnectionAdapter = JMXConnectionAdapter.create(serviceUrl, host, port, username, password);
+            return jmxConnectionAdapter;
+        } catch (Exception e) {
+            logger.error("Error while connecting to JMX interface", e);
+            return null;
+        }
     }
 
     private String getPassword(Map configMap) {

@@ -44,7 +44,11 @@ public class MetricKeyFormatter {
         String subType = getKeyProperty(instance, HBaseMBeanKeyPropertyEnum.SUBTYPE.toString());
         String name = getKeyProperty(instance, HBaseMBeanKeyPropertyEnum.NAME.toString());
 
-        StringBuilder metricsKey = new StringBuilder("RegionServer|" + displayName + "|");
+        StringBuilder metricsKey = new StringBuilder("RegionServer|");
+
+        if (!Strings.isNullOrEmpty(displayName)) {
+            metricsKey.append(displayName).append("|");
+        }
 
         //Include name ( Master ) if not already included
         if (!metricsKey.toString().contains(name)) {
