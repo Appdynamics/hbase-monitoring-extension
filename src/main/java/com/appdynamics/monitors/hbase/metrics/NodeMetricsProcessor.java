@@ -4,6 +4,7 @@ import static com.appdynamics.TaskInputArgs.PASSWORD_ENCRYPTED;
 
 import com.appdynamics.TaskInputArgs;
 import com.appdynamics.extensions.crypto.CryptoUtil;
+import com.appdynamics.extensions.util.DeltaMetricsCalculator;
 import com.appdynamics.monitors.hbase.ConfigConstants;
 import com.appdynamics.monitors.hbase.JMXConnectionAdapter;
 import com.appdynamics.monitors.hbase.Util;
@@ -40,15 +41,15 @@ public class NodeMetricsProcessor {
 
 
     private final MetricKeyFormatter keyFormatter = new MetricKeyFormatter();
-    private final MetricValueTransformer valueConverter = new MetricValueTransformer();
+    private final MetricValueTransformer valueConverter;
 
     private Map server;
     private Map<String, List<Map>> configMBeans;
 
-    public NodeMetricsProcessor(Map server, Map<String, List<Map>> configMBeans) {
+    public NodeMetricsProcessor(Map server, Map<String, List<Map>> configMBeans, DeltaMetricsCalculator deltaCalculator) {
         this.server = server;
         this.configMBeans = configMBeans;
-
+        this.valueConverter = new MetricValueTransformer(deltaCalculator);
     }
 
     public List<Metric> getMetrics() throws Exception {
@@ -239,7 +240,11 @@ public class NodeMetricsProcessor {
 
                     nodeMetric.setProperties(props);
                     nodeMetric.setMetricPath(metricPath);
+
                     nodeMetric.setMetricValue(metricValue);
+
+                    BigDecimal deltaValue = valueConverter.applyDelta(metricPath, metricValue, props);
+                    nodeMetric.setDeltaValue(deltaValue);
                     nodeMetrics.add(nodeMetric);
                 }
 
@@ -270,6 +275,10 @@ public class NodeMetricsProcessor {
                     nodeMetric.setProperties(props);
                     nodeMetric.setMetricPath(metricPath);
                     nodeMetric.setMetricValue(metricValue);
+
+                    BigDecimal deltaValue = valueConverter.applyDelta(metricPath, metricValue, props);
+                    nodeMetric.setDeltaValue(deltaValue);
+
                     nodeMetrics.add(nodeMetric);
                 }
 

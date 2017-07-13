@@ -2,6 +2,7 @@ package com.appdynamics.monitors.hbase;
 
 
 import com.appdynamics.extensions.util.AggregatorFactory;
+import com.appdynamics.extensions.util.DeltaMetricsCalculator;
 import com.appdynamics.extensions.util.MetricWriteHelper;
 import com.appdynamics.monitors.hbase.metrics.ClusterMetricsProcessor;
 import com.appdynamics.monitors.hbase.metrics.Metric;
@@ -37,6 +38,8 @@ class HBaseMonitorTask implements Runnable {
     /* a utility to collect cluster metrics. */
     private final ClusterMetricsProcessor clusterMetricsCollector = new ClusterMetricsProcessor();
 
+    private DeltaMetricsCalculator deltaCalculator;
+
 
     private HBaseMonitorTask() {
     }
@@ -68,7 +71,7 @@ class HBaseMonitorTask implements Runnable {
         try {
             logger.debug("JMX Connection is open");
 
-            NodeMetricsProcessor nodeProcessor = new NodeMetricsProcessor(server, configMBeans);
+            NodeMetricsProcessor nodeProcessor = new NodeMetricsProcessor(server, configMBeans, deltaCalculator);
             List<Metric> nodeMetrics = nodeProcessor.getMetrics();
 
             AggregatorFactory aggregatorFactory = new AggregatorFactory();
@@ -104,6 +107,11 @@ class HBaseMonitorTask implements Runnable {
 
         Builder mbeans(Map<String, List<Map>> mBeans) {
             task.configMBeans = mBeans;
+            return this;
+        }
+
+        Builder deltaCalculator(DeltaMetricsCalculator deltaCalculator) {
+            task.deltaCalculator = deltaCalculator;
             return this;
         }
 

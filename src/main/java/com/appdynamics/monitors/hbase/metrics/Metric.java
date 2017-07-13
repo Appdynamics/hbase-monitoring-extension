@@ -9,6 +9,7 @@ public class Metric {
     private String metricPath;
     private String clusterKey;
     private BigDecimal metricValue;
+    private BigDecimal deltaValue;
     private MetricProperties properties;
 
     public String getMetricNameOrAlias() {
@@ -52,5 +53,13 @@ public class Metric {
 
     public void setClusterKey(String clusterKey) {
         this.clusterKey = clusterKey;
+    }
+
+    public BigDecimal getDeltaValue() {
+        return deltaValue;
+    }
+
+    public void setDeltaValue(BigDecimal deltaValue) {
+        this.deltaValue = deltaValue;
     }
 }

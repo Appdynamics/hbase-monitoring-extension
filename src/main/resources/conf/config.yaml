@@ -9,14 +9,14 @@ metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
 
 # List of HBase Instances
 instances:
-  - displayName: "Local HBase"  #displayName is a REQUIRED field for  level metrics.
-    host: ""
-    port:
-    username: ""
-    # Provide password or encryptedPassword
-    password: ""
-    encryptedPassword:
-    regionServers:
+   - displayName: "Local HBase"  #displayName is a REQUIRED field for  level metrics.
+     host: ""
+     port:
+     username: ""
+     # Provide password or encryptedPassword
+     password: ""
+     encryptedPassword:
+     regionServers:
        - displayName: "RegionServer1"
          host: ""
          port:
@@ -25,13 +25,6 @@ instances:
          password: ""
          encryptedPassword:
        - displayName: "RegionServer2"
-         host: ""
-         port: 10101
-         username: ""
-         # Provide password or encryptedPassword
-         password: ""
-         encryptedPassword:
-       - displayName: "RegionServer3"
          host: ""
          port:
          username: ""
@@ -82,6 +75,8 @@ mbeans:
         metrics:
           include:
             - storeCount : "storeCount"
+              delta : "true"
+              multiplier : 100
             - storeFileCount : "storeFileCount"
             - storeFileIndexSize : "storeFileIndexSize"
       - objectName: "Hadoop:service=HBase,name=RegionServer,sub=IPC"

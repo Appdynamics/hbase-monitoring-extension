@@ -18,6 +18,7 @@
 package com.appdynamics.monitors.hbase;
 
 import com.appdynamics.extensions.conf.MonitorConfiguration;
+import com.appdynamics.extensions.util.DeltaMetricsCalculator;
 import com.appdynamics.extensions.util.MetricWriteHelper;
 import com.appdynamics.extensions.util.MetricWriteHelperFactory;
 import com.singularity.ee.agent.systemagent.api.AManagedMonitor;
@@ -34,6 +35,9 @@ import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class HBaseMonitor extends AManagedMonitor {
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HBaseMonitor.class);
@@ -43,6 +47,9 @@ public class HBaseMonitor extends AManagedMonitor {
 
     private boolean initialized;
     private MonitorConfiguration configuration;
+
+    private final DeltaMetricsCalculator deltaCalculator = new DeltaMetricsCalculator(10);
+
 
     public HBaseMonitor() {
         System.out.println(logVersion());
@@ -105,6 +112,7 @@ public class HBaseMonitor extends AManagedMonitor {
                 .metricWriter(configuration.getMetricWriter())
                 .server(server)
                 .mbeans((Map<String, List<Map>>) configuration.getConfigYml().get(ConfigConstants.MBEANS))
+                .deltaCalculator(deltaCalculator)
                 .build();
     }
 
@@ -128,12 +136,23 @@ public class HBaseMonitor extends AManagedMonitor {
 
         org.apache.log4j.Logger.getRootLogger().addAppender(ca);
 
-        HBaseMonitor monitor = new HBaseMonitor();
+        final HBaseMonitor monitor = new HBaseMonitor();
 
-        Map<String, String> taskArgs = new HashMap<String, String>();
+        final Map<String, String> taskArgs = new HashMap<String, String>();
         taskArgs.put(CONFIG_ARG, "/Users/Muddam/AppDynamics/Code/extensions/hbase-monitoring-extension/src/main/resources/conf/config.yaml");
 
-        monitor.execute(taskArgs, null);
+        //monitor.execute(taskArgs, null);
+
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.scheduleAtFixedRate(new Runnable() {
+            public void run() {
+                try {
+                    monitor.execute(taskArgs, null);
+                } catch (Exception e) {
+                    logger.error("Error while running the task", e);
+                }
+            }
+        }, 2, 30, TimeUnit.SECONDS);
 
     }
 }

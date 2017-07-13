@@ -39,6 +39,11 @@ public class MetricPrinter {
             MetricProperties props = metric.getProperties();
             String fullMetricPath = formMetricPath(metric.getMetricPath());
             printMetric(fullMetricPath, metric.getMetricValue(), props.getAggregationType(), props.getTimeRollupType(), props.getClusterRollupType());
+
+            if (metric.getProperties().isDelta() && metric.getDeltaValue() != null) {
+                printMetric(fullMetricPath + " Delta", metric.getDeltaValue(), props.getAggregationType(), props.getTimeRollupType(), props.getClusterRollupType());
+            }
+
         }
     }
 
