@@ -17,20 +17,15 @@
 
 package com.appdynamics.monitors.hbase;
 
-import com.appdynamics.extensions.conf.MonitorConfiguration;
-import com.appdynamics.extensions.util.DeltaMetricsCalculator;
-import com.appdynamics.extensions.util.MetricWriteHelper;
-import com.appdynamics.extensions.util.MetricWriteHelperFactory;
-import com.singularity.ee.agent.systemagent.api.AManagedMonitor;
-import com.singularity.ee.agent.systemagent.api.TaskExecutionContext;
-import com.singularity.ee.agent.systemagent.api.TaskOutput;
+import com.appdynamics.extensions.ABaseMonitor;
+import com.appdynamics.extensions.TasksExecutionServiceProvider;
+import com.appdynamics.extensions.util.AssertUtils;
 import com.singularity.ee.agent.systemagent.api.exception.TaskExecutionException;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.PatternLayout;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.List;
@@ -39,92 +34,38 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class HBaseMonitor extends AManagedMonitor {
+public class HBaseMonitor extends ABaseMonitor {
+
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HBaseMonitor.class);
     private static final String CONFIG_ARG = "config-file";
     private static final String METRIC_PREFIX = "Custom Metrics|HBase|";
 
 
-    private boolean initialized;
-    private MonitorConfiguration configuration;
-
-    private final DeltaMetricsCalculator deltaCalculator = new DeltaMetricsCalculator(10);
-
-
-    public HBaseMonitor() {
-        System.out.println(logVersion());
+    @Override
+    protected String getDefaultMetricPrefix() {
+        return METRIC_PREFIX;
     }
 
-    public TaskOutput execute(Map<String, String> taskArgs, TaskExecutionContext out) throws TaskExecutionException {
-        logVersion();
-        if (!initialized) {
-            initialize(taskArgs);
-        }
-        logger.debug("The raw arguments are {}", taskArgs);
-        configuration.executeTask();
-        logger.info("HBase monitor run completed successfully.");
-        return new TaskOutput("HBase monitor run completed successfully.");
-
+    @Override
+    public String getMonitorName() {
+        return "HBase Monitor1";
     }
 
-    private void initialize(Map<String, String> taskArgs) {
-        if (!initialized) {
-            //read the config.
-            final String configFilePath = taskArgs.get(CONFIG_ARG);
-            MetricWriteHelper metricWriteHelper = MetricWriteHelperFactory.create(this);
-            MonitorConfiguration conf = new MonitorConfiguration(METRIC_PREFIX, new TaskRunnable(), metricWriteHelper);
-            conf.setConfigYml(configFilePath);
-            conf.checkIfInitialized(MonitorConfiguration.ConfItem.CONFIG_YML, MonitorConfiguration.ConfItem.EXECUTOR_SERVICE,
-                    MonitorConfiguration.ConfItem.METRIC_PREFIX, MonitorConfiguration.ConfItem.METRIC_WRITE_HELPER);
-            this.configuration = conf;
-            initialized = true;
+    @Override
+    protected void doRun(TasksExecutionServiceProvider serviceProvider) {
+        List<Map<String, String>> instances = (List<Map<String, String>>) configuration.getConfigYml().get("instances");
+        AssertUtils.assertNotNull(instances, "The 'instances' section in config.yml is not initialised");
+        for (Map server : instances) {
+            HBaseMonitorTask task = new HBaseMonitorTask(serviceProvider, server);
+            serviceProvider.submit((String) server.get("name"), task);
         }
     }
 
-    private class TaskRunnable implements Runnable {
-
-        public void run() {
-            Map<String, ?> config = configuration.getConfigYml();
-            if (config != null) {
-                List<Map> servers = (List<Map>) config.get(ConfigConstants.INSTANCES);
-                if (servers != null && !servers.isEmpty()) {
-                    for (Map server : servers) {
-                        try {
-                            HBaseMonitorTask task = createTask(server);
-                            configuration.getExecutorService().execute(task);
-                        } catch (IOException e) {
-                            logger.error("Cannot construct JMX uri for {}", Util.convertToString(server.get(ConfigConstants.DISPLAY_NAME), ""));
-                        }
-
-                    }
-                } else {
-                    logger.error("There are no servers configured");
-                }
-            } else {
-                logger.error("The config.yml is not loaded due to previous errors.The task will not run");
-            }
-        }
-    }
-
-    private HBaseMonitorTask createTask(Map server) throws IOException {
-        return new HBaseMonitorTask.Builder()
-                .metricPrefix(configuration.getMetricPrefix())
-                .metricWriter(configuration.getMetricWriter())
-                .server(server)
-                .mbeans((Map<String, List<Map>>) configuration.getConfigYml().get(ConfigConstants.MBEANS))
-                .deltaCalculator(deltaCalculator)
-                .build();
-    }
-
-
-    private static String getImplementationVersion() {
-        return HBaseMonitor.class.getPackage().getImplementationTitle();
-    }
-
-    private String logVersion() {
-        String msg = "Using Monitor Version [" + getImplementationVersion() + "]";
-        logger.info(msg);
-        return msg;
+    @Override
+    protected int getTaskCount() {
+        List<Map<String, String>> instances = (List<Map<String, String>>) configuration.getConfigYml().get("instances");
+        AssertUtils.assertNotNull(instances, "The 'instances' section in config.yml is not initialised");
+        return instances.size();
     }
 
     public static void main(String[] args) throws TaskExecutionException {

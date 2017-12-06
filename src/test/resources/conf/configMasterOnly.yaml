@@ -9,9 +9,9 @@ metricPrefix: Custom Metrics|HBase
 
 # List of HBase Instances
 instances:
-   - displayName: "Local HBase"
-     host: "localhost"
-     port: 10101
+   - displayName:
+     host:
+     port:
      username:
      # Provide password or encryptedPassword
      password:

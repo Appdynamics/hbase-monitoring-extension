@@ -1,26 +1,23 @@
 package com.appdynamics.monitors.hbase;
 
 
-import com.appdynamics.extensions.util.AggregatorFactory;
-import com.appdynamics.extensions.util.DeltaMetricsCalculator;
-import com.appdynamics.extensions.util.MetricWriteHelper;
-import com.appdynamics.monitors.hbase.metrics.ClusterMetricsProcessor;
-import com.appdynamics.monitors.hbase.metrics.Metric;
-import com.appdynamics.monitors.hbase.metrics.MetricPrinter;
-import com.appdynamics.monitors.hbase.metrics.NodeMetricsProcessor;
-import com.singularity.ee.agent.systemagent.api.MetricWriter;
+import com.appdynamics.extensions.AMonitorTaskRunnable;
+import com.appdynamics.extensions.MetricWriteHelper;
+import com.appdynamics.extensions.TasksExecutionServiceProvider;
+import com.appdynamics.extensions.conf.MonitorConfiguration;
+import com.appdynamics.monitors.hbase.metrics.JMXMetricCollector;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Phaser;
 
-class HBaseMonitorTask implements Runnable {
+class HBaseMonitorTask implements AMonitorTaskRunnable {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HBaseMonitorTask.class);
-    private static final String METRICS_COLLECTION_SUCCESSFUL = "Metrics Collection Successful";
-    private static final BigDecimal ERROR_VALUE = BigDecimal.ZERO;
-    private static final BigDecimal SUCCESS_VALUE = BigDecimal.ONE;
+
+    private MonitorConfiguration configuration;
 
     private String displayName;
     /* metric prefix from the config.yaml to be applied to each metric path*/
@@ -35,88 +32,81 @@ class HBaseMonitorTask implements Runnable {
     /* config mbeans from config.yaml. */
     private Map<String, List<Map>> configMBeans;
 
-    /* a utility to collect cluster metrics. */
-    private final ClusterMetricsProcessor clusterMetricsCollector = new ClusterMetricsProcessor();
 
-    private DeltaMetricsCalculator deltaCalculator;
-
-
-    private HBaseMonitorTask() {
+    HBaseMonitorTask(TasksExecutionServiceProvider serviceProvider, Map server) {
+        this.configuration = serviceProvider.getMonitorConfiguration();
+        this.server = server;
+        this.metricWriter = serviceProvider.getMetricWriteHelper();
+        configMBeans = (Map<String, List<Map>>) configuration.getConfigYml().get(ConfigConstants.MBEANS);
     }
 
     public void run() {
 
         displayName = Util.convertToString(server.get(ConfigConstants.DISPLAY_NAME), "");
+        Phaser phaser = new Phaser();
+
+        String metricPrefix = configuration.getMetricPrefix();
         long startTime = System.currentTimeMillis();
-        MetricPrinter metricPrinter = new MetricPrinter(metricPrefix, displayName, metricWriter);
         try {
             logger.debug("HBase monitor thread for server {} started.", displayName);
 
-            BigDecimal status = extractAndReportMetrics(metricPrinter);
-            metricPrinter.printMetric(metricPrinter.formMetricPath(METRICS_COLLECTION_SUCCESSFUL), status
-                    , MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION, MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT, MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_INDIVIDUAL);
+            List<Map> masterAllMbeans = new ArrayList();
+            List<Map> commonMBeans = configMBeans.get("common");
+            if (commonMBeans != null) {
+                masterAllMbeans.addAll(commonMBeans);
+            }
+
+            List<Map> masterMBeans = configMBeans.get("master");
+            if (masterMBeans != null) {
+                masterAllMbeans.addAll(masterMBeans);
+            }
+
+            String masterMetricPrefix = metricPrefix + "|" + displayName + "|Master|";
+            JMXMetricCollector masterJmxCollector = new JMXMetricCollector(server, masterAllMbeans, masterMetricPrefix, metricWriter, phaser);
+
+            configuration.getExecutorService().submit(displayName + " metric collection Task", masterJmxCollector);
+            logger.debug("Registering phaser for {}", displayName);
+            phaser.register();
+
+            List<Map> regionServers = (List<Map>) server.get(ConfigConstants.REGIONSERVERS);
+
+            if (regionServers == null || regionServers.size() <= 0) {
+                logger.info("No region servers defined. Not collecting region server metrics");
+                return;
+            }
+
+            List<Map> regionServerAllMbeans = new ArrayList<Map>();
+            if (commonMBeans != null) {
+                regionServerAllMbeans.addAll(commonMBeans);
+            }
+
+
+            List<Map> regionServerMbeans = configMBeans.get("regionServer");
+            if (regionServerMbeans != null) {
+                regionServerAllMbeans.addAll(regionServerMbeans);
+            }
+
+            for (Map regionServer : regionServers) {
+
+                String regionServerDisplayName = Util.convertToString(regionServer.get(ConfigConstants.DISPLAY_NAME), "");
+                String regionServerMetricPrefix = metricPrefix + "|" + displayName + "|RegionServer|" + regionServerDisplayName + "|";
+                JMXMetricCollector regionServerJmxCollector = new JMXMetricCollector(regionServer, regionServerAllMbeans, regionServerMetricPrefix, metricWriter, phaser);
+                configuration.getExecutorService().submit(regionServerDisplayName + " metric collection Task", regionServerJmxCollector);
+                logger.debug("Registering phaser for {}", regionServerDisplayName);
+                phaser.register();
+            }
+            //Wait for all tasks to finish
+            phaser.arriveAndAwaitAdvance();
         } catch (Exception e) {
             logger.error("Error in HBase Monitor thread for server {}", displayName, e);
-            metricPrinter.printMetric(metricPrinter.formMetricPath(METRICS_COLLECTION_SUCCESSFUL), ERROR_VALUE
-                    , MetricWriter.METRIC_AGGREGATION_TYPE_OBSERVATION, MetricWriter.METRIC_TIME_ROLLUP_TYPE_CURRENT, MetricWriter.METRIC_CLUSTER_ROLLUP_TYPE_INDIVIDUAL);
 
         } finally {
             long endTime = System.currentTimeMillis() - startTime;
-            logger.debug("HBase monitor thread for server {} ended. Time taken = {} and Total metrics reported = {}", displayName, endTime, metricPrinter.getTotalMetricsReported());
+            logger.debug("HBase monitor thread for server {} ended. Time taken = {}", displayName, endTime);
         }
     }
 
-
-    private BigDecimal extractAndReportMetrics(final MetricPrinter metricPrinter) throws Exception {
-        try {
-            logger.debug("JMX Connection is open");
-
-            NodeMetricsProcessor nodeProcessor = new NodeMetricsProcessor(server, configMBeans, deltaCalculator);
-            List<Metric> nodeMetrics = nodeProcessor.getMetrics();
-
-            AggregatorFactory aggregatorFactory = new AggregatorFactory();
-            clusterMetricsCollector.collect(aggregatorFactory, nodeMetrics);
-            if (nodeMetrics.size() > 0) {
-                metricPrinter.reportClusterLevelMetrics(aggregatorFactory);
-                metricPrinter.reportNodeMetrics(nodeMetrics);
-            }
-        } catch (Exception e) {
-            logger.error("Error while collection metrics from JMX", e);
-            return ERROR_VALUE;
-        }
-        return SUCCESS_VALUE;
-    }
-
-    static class Builder {
-        private HBaseMonitorTask task = new HBaseMonitorTask();
-
-        Builder metricPrefix(String metricPrefix) {
-            task.metricPrefix = metricPrefix;
-            return this;
-        }
-
-        Builder metricWriter(MetricWriteHelper metricWriter) {
-            task.metricWriter = metricWriter;
-            return this;
-        }
-
-        Builder server(Map server) {
-            task.server = server;
-            return this;
-        }
-
-        Builder mbeans(Map<String, List<Map>> mBeans) {
-            task.configMBeans = mBeans;
-            return this;
-        }
-
-        Builder deltaCalculator(DeltaMetricsCalculator deltaCalculator) {
-            task.deltaCalculator = deltaCalculator;
-            return this;
-        }
-
-        HBaseMonitorTask build() {
-            return task;
-        }
+    public void onTaskComplete() {
+        logger.info("All tasks for server {} finished", displayName);
     }
 }
