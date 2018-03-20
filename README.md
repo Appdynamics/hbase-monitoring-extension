@@ -61,41 +61,48 @@ metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
 
 # List of HBase Instances
 instances:
-  - displayName: "Local HBase"  #displayName is a REQUIRED field for  level metrics.
-    host: ""
-    port:
-    username: ""
-    # Provide password or encryptedPassword
-    password: ""
-    encryptedPassword:
-    regionServers:
+   - displayName: "Local HBase"
+     host: "localhost"
+     port: 10101
+     username:
+     # Provide password or encryptedPassword
+     password:
+     encryptedPassword:
+     regionServers:
        - displayName: "RegionServer1"
-         host: ""
-         port:
-         username: ""
+         host: "localhost"
+         port: 10101
+         username:
          # Provide password or encryptedPassword
-         password: ""
+         password:
          encryptedPassword:
        - displayName: "RegionServer2"
-         host: ""
+         host: "localhost"
          port: 10101
-         username: ""
+         username:
          # Provide password or encryptedPassword
-         password: ""
+         password:
          encryptedPassword:
-       - displayName: "RegionServer3"
-         host: ""
-         port:
-         username: ""
-         # Provide password or encryptedPassword
-         password: ""
-         encryptedPassword:
-         
+
+
 encryptionKey:
 
 # number of concurrent tasks.
 # This doesn't need to be changed unless many instances are configured
 numberOfThreads: 10
+
+
+#                                      List of metrics
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Glossary of terms(These terms are used as properties for each metric):
+#   alias
+#   aggregationType
+#   timeRollUpType
+#   clusterRollUpType                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+#   multiplier -->not for derived metrics
+#   convert --> not for derived metrics
+#   delta --> not for derived metrics
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # The configuration of different metrics from various mbeans of HBase server
 mbeans:
@@ -103,53 +110,67 @@ mbeans:
    common:
       - objectName: "Hadoop:service=HBase,name=JvmMetrics"
         metrics:
-          include:
-            - MemHeapCommittedM : "MemHeapCommittedM"
-            - MemHeapMaxM : "MemHeapMaxM"
+            - MemHeapCommittedM:
+                 alias: "MemHeapCommittedM"
+            - MemHeapMaxM:
+                 alias: "MemHeapMaxM"
 
    # Master specific mbeans
    master:
       # This mbean is to get cluster related metrics.
       - objectName: "Hadoop:service=HBase,name=Master,sub=AssignmentManger"
         metrics:
-          include:
-            - BulkAssign_max : "BulkAssign_max"  # If this attribute is removed, nodeIds will be seen in the metric paths and not their corressponding names.
-            - Assign_max : "Assign_max"
+            - BulkAssign_max:
+                 alias: "BulkAssign_max"
+            - Assign_max:
+                 alias: "Assign_max"
 
       - objectName: "Hadoop:service=HBase,name=Master,sub=Server"
-        #aggregation: true #uncomment this only if you want the extension to do aggregation for all the metrics in this mbean for a cluster
         metrics:
-          include:
-            - averageLoad : "averageLoad" #The rough number of cache hits since the last time statistics were reset. A cache hit is a read operation invocation (that is, get()) for which an entry exists in this map.
-            - clusterRequests : "clusterRequests" #The rough number of cache misses since the last time statistics were reset.
-            - numDeadRegionServers : "numDeadRegionServers" #The number of prune operations since the last time statistics were reset. A prune operation occurs every time the cache reaches its high watermark as specified by the HighUnits attribute.
-            - numRegionServers : "numRegionServers" #The total number of get() operations since the last time statistics were reset.
+            - averageLoad:
+                 alias: "averageLoad"
+            - clusterRequests:
+                 alias: "clusterRequests"
+            - numDeadRegionServers:
+                 alias: "numDeadRegionServers"
+            - numRegionServers:
+                 alias: "numRegionServers"
    # region server specific mbeans
    regionServer:
       - objectName: "Hadoop:service=HBase,name=RegionServer,sub=Server"
-        aggregation: true
-        metricType: "OBSERVATION AVERAGE COLLECTIVE"
         metrics:
-          include:
-            - storeCount : "storeCount"
-            - storeFileCount : "storeFileCount"
-            - storeFileIndexSize : "storeFileIndexSize"
+            - storeCount:
+                 alias: "storeCount"
+                 #delta : "true"
+                 multiplier : 100
+            - storeFileCount:
+                 alias: "storeFileCount"
+                 #delta : "true"
+            - storeFileIndexSize :
+                 alias: "storeFileIndexSize"
       - objectName: "Hadoop:service=HBase,name=RegionServer,sub=IPC"
-        aggregation: false
-        metricType: "OBSERVATION AVERAGE COLLECTIVE"
         metrics:
-          include:
-            - TotalCallTime_num_ops : "TotalCallTime_num_ops"
-            - exceptions : "exceptions"
-              aggregation: true
-            - ProcessCallTime_num_ops : "ProcessCallTime_num_ops"
+            - TotalCallTime_num_ops:
+                alias: "TotalCallTime_num_ops"
+            - exceptions:
+                alias: "exceptions"
+            - ProcessCallTime_num_ops:
+                alias: "ProcessCallTime_num_ops"
       - objectName: "Hadoop:service=HBase,name=RegionServer,sub=WAL"
-       #aggregation: true #uncomment this only if you want the extension to do aggregation for all the metrics in this mbean for a cluster
         metrics:
-          include:
-            - AppendSize_num_ops : "AppendSize_num_ops"
-            - AppendSize_min : "AppendSize_min"
-            - AppendSize_max : "AppendSize_max"
+            - AppendSize_num_ops:
+                 alias: "AppendSize_num_ops"
+            - AppendSize_min:
+                 alias: "AppendSize_min"
+            - AppendSize_max:
+                 alias: "AppendSize_min"
+
+derivedMetrics:
+    - derivedMetricPath: "Local HBase|RegionServer|Cluster|Server|storeCount"
+      formula: "Local HBase|RegionServer|{y}|Server|storeCount"
+      aggregationType: “SUM"
+      timeRollUpType: “SUM"
+      clusterRollUpType: “COLLECTIVE”
 ```
 The objectNames mentioned in the above yaml may not match your environment exactly. Please use jconsole to extract the objectName and configure it accordingly in the config.yaml. 
 
