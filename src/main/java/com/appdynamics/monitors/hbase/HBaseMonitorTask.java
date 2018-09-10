@@ -74,7 +74,6 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
 
             configuration.getExecutorService().submit(displayName + " metric collection Task", masterJmxCollector);
             logger.debug("Registering phaser for {}", displayName);
-            phaser.register();
 
             List<Map> regionServers = (List<Map>) server.get(ConfigConstants.REGIONSERVERS);
 
@@ -101,7 +100,6 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
                 JMXMetricCollector regionServerJmxCollector = new JMXMetricCollector(regionServer, regionServerAllMbeans, regionServerMetricPrefix, metricWriter, phaser);
                 configuration.getExecutorService().submit(regionServerDisplayName + " metric collection Task", regionServerJmxCollector);
                 logger.debug("Registering phaser for {}", regionServerDisplayName);
-                phaser.register();
             }
             //Wait for all tasks to finish
             phaser.arriveAndAwaitAdvance();

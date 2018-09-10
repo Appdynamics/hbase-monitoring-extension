@@ -56,6 +56,7 @@ public class JMXMetricCollector implements Runnable {
         this.metricPrefix = metricPrefix;
         this.metricWriter = metricWriter;
         this.phaser = phaser;
+        this.phaser.register();
     }
 
     public void run() {
