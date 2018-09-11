@@ -52,7 +52,7 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
 
         displayName = Util.convertToString(server.get(ConfigConstants.DISPLAY_NAME), "");
         Phaser phaser = new Phaser();
-
+        phaser.register();
         String metricPrefix = configuration.getMetricPrefix();
         long startTime = System.currentTimeMillis();
         try {
