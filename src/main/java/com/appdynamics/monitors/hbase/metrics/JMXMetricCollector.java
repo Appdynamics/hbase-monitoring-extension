@@ -9,8 +9,6 @@
 package com.appdynamics.monitors.hbase.metrics;
 
 import static com.appdynamics.extensions.crypto.CryptoUtil.getPassword;
-
-import com.appdynamics.extensions.MetricWriteHelper;
 import com.appdynamics.extensions.metrics.Metric;
 import com.appdynamics.monitors.hbase.ConfigConstants;
 import com.appdynamics.monitors.hbase.HBaseMBeanKeyPropertyEnum;
@@ -47,19 +45,21 @@ public class JMXMetricCollector implements Runnable {
     private Map server;
     private List<Map> mbeans;
     private String metricPrefix;
-    private MetricWriteHelper metricWriter;
     private Phaser phaser;
+    private List<Metric> metrics;
 
-    public JMXMetricCollector(Map server, List<Map> mbeans, String metricPrefix, MetricWriteHelper metricWriter, Phaser phaser) {
+    public JMXMetricCollector(Map server, List<Map> mbeans, String metricPrefix, Phaser phaser, List<Metric> metrics) {
         this.server = server;
         this.mbeans = mbeans;
         this.metricPrefix = metricPrefix;
-        this.metricWriter = metricWriter;
         this.phaser = phaser;
         this.phaser.register();
+        this.metrics = metrics;
     }
 
     public void run() {
+
+        List<Metric> collectedMetrics = Lists.newArrayList();
 
         JMXConnectionAdapter jmxAdapter = null;
         JMXConnector jmxConnection = null;
@@ -68,7 +68,6 @@ public class JMXMetricCollector implements Runnable {
         try {
             logger.debug("Collecting metrics from {}", serverDisplayName);
 
-            List<Metric> metrics = Lists.newArrayList();
             try {
                 jmxAdapter = getJMXConnectionAdapter(server);
             } catch (MalformedURLException e) {
@@ -108,7 +107,7 @@ public class JMXMetricCollector implements Runnable {
                                     Object value = attr.getValue();
                                     if (value != null) {
                                         Metric metric = new Metric(attrName, String.valueOf(value), metricPath + attrName, metricsToCollectWithConfig.get(attrName));
-                                        metrics.add(metric);
+                                        collectedMetrics.add(metric);
                                     } else {
                                         logger.warn("Ignoring metric {} with path {} as the value is null", attrName, metricPath);
                                     }
@@ -119,13 +118,10 @@ public class JMXMetricCollector implements Runnable {
                             }
                         }
                     }
+                    metrics.addAll(collectedMetrics);
                 }
             } catch (Exception e) {
                 logger.error("Error while collecting metrics from {}", serverDisplayName, e);
-            }
-
-            if (metrics != null && metrics.size() > 0) {
-                metricWriter.transformAndPrintMetrics(metrics);
             }
 
         } finally {

@@ -13,6 +13,7 @@ import com.appdynamics.extensions.AMonitorTaskRunnable;
 import com.appdynamics.extensions.MetricWriteHelper;
 import com.appdynamics.extensions.TasksExecutionServiceProvider;
 import com.appdynamics.extensions.conf.MonitorConfiguration;
+import com.appdynamics.extensions.metrics.Metric;
 import com.appdynamics.monitors.hbase.metrics.JMXMetricCollector;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +56,8 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
         phaser.register();
         String metricPrefix = configuration.getMetricPrefix();
         long startTime = System.currentTimeMillis();
+
+        List<Metric> metrics = new ArrayList<>();
         try {
             logger.debug("HBase monitor thread for server {} started.", displayName);
 
@@ -70,7 +73,7 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
             }
 
             String masterMetricPrefix = metricPrefix + "|" + displayName + "|Master|";
-            JMXMetricCollector masterJmxCollector = new JMXMetricCollector(server, masterAllMbeans, masterMetricPrefix, metricWriter, phaser);
+            JMXMetricCollector masterJmxCollector = new JMXMetricCollector(server, masterAllMbeans, masterMetricPrefix, phaser, metrics);
 
             configuration.getExecutorService().submit(displayName + " metric collection Task", masterJmxCollector);
             logger.debug("Registering phaser for {}", displayName);
@@ -92,17 +95,20 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
             if (regionServerMbeans != null) {
                 regionServerAllMbeans.addAll(regionServerMbeans);
             }
-
             for (Map regionServer : regionServers) {
 
                 String regionServerDisplayName = Util.convertToString(regionServer.get(ConfigConstants.DISPLAY_NAME), "");
                 String regionServerMetricPrefix = metricPrefix + "|" + displayName + "|RegionServer|" + regionServerDisplayName + "|";
-                JMXMetricCollector regionServerJmxCollector = new JMXMetricCollector(regionServer, regionServerAllMbeans, regionServerMetricPrefix, metricWriter, phaser);
+                JMXMetricCollector regionServerJmxCollector = new JMXMetricCollector(regionServer, regionServerAllMbeans, regionServerMetricPrefix, phaser, metrics);
                 configuration.getExecutorService().submit(regionServerDisplayName + " metric collection Task", regionServerJmxCollector);
                 logger.debug("Registering phaser for {}", regionServerDisplayName);
             }
             //Wait for all tasks to finish
             phaser.arriveAndAwaitAdvance();
+            if (metrics.size() > 0) {
+                metricWriter.transformAndPrintMetrics(metrics);
+            }
+
         } catch (Exception e) {
             logger.error("Error in HBase Monitor thread for server {}", displayName, e);
 
