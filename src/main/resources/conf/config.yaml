@@ -32,7 +32,6 @@ instances:
          password:
          encryptedPassword:
 
-
 encryptionKey:
 
 # number of concurrent tasks.
@@ -111,7 +110,7 @@ mbeans:
             - AppendSize_min:
                  alias: "AppendSize_min"
             - AppendSize_max:
-                 alias: "AppendSize_min"
+                 alias: "AppendSize_max"
 
 derivedMetrics:
     - derivedMetricPath: "Local HBase|RegionServer|Cluster|Server|storeCount"
