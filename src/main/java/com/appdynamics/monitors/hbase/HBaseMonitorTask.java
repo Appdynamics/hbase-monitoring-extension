@@ -18,6 +18,7 @@ import com.appdynamics.monitors.hbase.metrics.JMXMetricCollector;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Phaser;
@@ -57,7 +58,7 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
         String metricPrefix = configuration.getMetricPrefix();
         long startTime = System.currentTimeMillis();
 
-        List<Metric> metrics = new ArrayList<>();
+        List<Metric> metrics = Collections.synchronizedList(new ArrayList<Metric>());
         try {
             logger.debug("HBase monitor thread for server {} started.", displayName);
 
