@@ -40,7 +40,7 @@ public class HBaseMonitor extends ABaseMonitor {
 
     @Override
     public String getMonitorName() {
-        return "HBase Monitor1";
+        return "HBase Monitor";
     }
 
     @Override
@@ -72,7 +72,7 @@ public class HBaseMonitor extends ABaseMonitor {
         final HBaseMonitor monitor = new HBaseMonitor();
 
         final Map<String, String> taskArgs = new HashMap<String, String>();
-        taskArgs.put(CONFIG_ARG, "/Users/Muddam/AppDynamics/Code/extensions/hbase-monitoring-extension/src/main/resources/conf/config.yaml");
+        taskArgs.put(CONFIG_ARG, "src/main/resources/conf/config.yml");
 
         //monitor.execute(taskArgs, null);
 

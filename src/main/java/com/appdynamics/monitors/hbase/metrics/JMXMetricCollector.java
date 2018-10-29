@@ -33,31 +33,27 @@ import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Phaser;
+import java.util.concurrent.Callable;
 
 /**
  * @author Satish Muddam
  */
-public class JMXMetricCollector implements Runnable {
+public class JMXMetricCollector implements Callable<List<Metric>> {
 
     static final org.slf4j.Logger logger = LoggerFactory.getLogger(JMXMetricCollector.class);
 
     private Map server;
     private List<Map> mbeans;
     private String metricPrefix;
-    private Phaser phaser;
-    private List<Metric> metrics;
 
-    public JMXMetricCollector(Map server, List<Map> mbeans, String metricPrefix, Phaser phaser, List<Metric> metrics) {
+    public JMXMetricCollector(Map server, List<Map> mbeans, String metricPrefix) {
         this.server = server;
         this.mbeans = mbeans;
         this.metricPrefix = metricPrefix;
-        this.phaser = phaser;
-        this.phaser.register();
-        this.metrics = metrics;
     }
 
-    public void run() {
+
+    public List<Metric> call() {
 
         List<Metric> collectedMetrics = Lists.newArrayList();
 
@@ -72,7 +68,7 @@ public class JMXMetricCollector implements Runnable {
                 jmxAdapter = getJMXConnectionAdapter(server);
             } catch (MalformedURLException e) {
                 logger.error("Error creating JMX connection to server {}", serverDisplayName, e);
-                return;
+                return collectedMetrics;
             }
 
             if (jmxAdapter != null) {
@@ -80,7 +76,7 @@ public class JMXMetricCollector implements Runnable {
                     jmxConnection = jmxAdapter.open();
                 } catch (Exception e) {
                     logger.error("Error opening JMX connection to server {}", serverDisplayName, e);
-                    return;
+                    return collectedMetrics;
                 }
             }
 
@@ -92,7 +88,7 @@ public class JMXMetricCollector implements Runnable {
                         String configObjectName = Util.convertToString(aConfigMBean.get(ConfigConstants.OBJECT_NAME), "");
                         logger.debug("Processing mbean %s from the config file", configObjectName);
 
-                        //Each mbean mentioned in the config.yaml can fetch multiple object instances. Metrics need to be extracted
+                        //Each mbean mentioned in the config.yml can fetch multiple object instances. Metrics need to be extracted
                         //from each object instance separately.
                         Set<ObjectInstance> objectInstances = jmxAdapter.queryMBeans(jmxConnection, ObjectName.getInstance(configObjectName));
                         for (ObjectInstance instance : objectInstances) {
@@ -118,7 +114,7 @@ public class JMXMetricCollector implements Runnable {
                             }
                         }
                     }
-                    metrics.addAll(collectedMetrics);
+                    logger.debug("Successfully completed JMX mbeans metrics for {}", serverDisplayName);
                 }
             } catch (Exception e) {
                 logger.error("Error while collecting metrics from {}", serverDisplayName, e);
@@ -133,8 +129,7 @@ public class JMXMetricCollector implements Runnable {
                     logger.error("Failed to close the JMX connection for server {}", serverDisplayName);
                 }
             }
-            logger.debug("Phaser arrived for {}", serverDisplayName);
-            phaser.arriveAndDeregister();
+            return collectedMetrics;
         }
     }
 

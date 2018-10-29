@@ -15,13 +15,14 @@ import com.appdynamics.extensions.TasksExecutionServiceProvider;
 import com.appdynamics.extensions.conf.MonitorConfiguration;
 import com.appdynamics.extensions.metrics.Metric;
 import com.appdynamics.monitors.hbase.metrics.JMXMetricCollector;
+import com.google.common.collect.Lists;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Phaser;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 class HBaseMonitorTask implements AMonitorTaskRunnable {
 
@@ -30,8 +31,6 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
     private MonitorConfiguration configuration;
 
     private String displayName;
-    /* metric prefix from the config.yaml to be applied to each metric path*/
-    private String metricPrefix;
 
     /* server properties */
     private Map server;
@@ -39,7 +38,7 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
     /* a facade to report metrics to the machine agent.*/
     private MetricWriteHelper metricWriter;
 
-    /* config mbeans from config.yaml. */
+    /* config mbeans from config.yml. */
     private Map<String, List<Map>> configMBeans;
 
 
@@ -53,12 +52,11 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
     public void run() {
 
         displayName = Util.convertToString(server.get(ConfigConstants.DISPLAY_NAME), "");
-        Phaser phaser = new Phaser();
-        phaser.register();
         String metricPrefix = configuration.getMetricPrefix();
         long startTime = System.currentTimeMillis();
 
-        List<Metric> metrics = Collections.synchronizedList(new ArrayList<Metric>());
+        List<Metric> metrics = new ArrayList<Metric>();
+        List<FutureTask<List<Metric>>> futureTaskList = Lists.newArrayList();
         try {
             logger.debug("HBase monitor thread for server {} started.", displayName);
 
@@ -74,38 +72,52 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
             }
 
             String masterMetricPrefix = metricPrefix + "|" + displayName + "|Master|";
-            JMXMetricCollector masterJmxCollector = new JMXMetricCollector(server, masterAllMbeans, masterMetricPrefix, phaser, metrics);
-
-            configuration.getExecutorService().submit(displayName + " metric collection Task", masterJmxCollector);
-            logger.debug("Registering phaser for {}", displayName);
+            JMXMetricCollector masterJmxCollector = new JMXMetricCollector(server, masterAllMbeans, masterMetricPrefix);
+            FutureTask<List<Metric>> masterTaskExecutor = new FutureTask<>(masterJmxCollector);
+            configuration.getExecutorService().submit(displayName + " metric collection Task", masterTaskExecutor);
+            futureTaskList.add(masterTaskExecutor);
+            logger.debug("starting future task for {}", displayName);
 
             List<Map> regionServers = (List<Map>) server.get(ConfigConstants.REGIONSERVERS);
 
             if (regionServers == null || regionServers.size() <= 0) {
                 logger.info("No region servers defined. Not collecting region server metrics");
-                return;
+            }
+            else{
+                List<Map> regionServerAllMbeans = new ArrayList<Map>();
+                if (commonMBeans != null) {
+                    regionServerAllMbeans.addAll(commonMBeans);
+                }
+
+
+                List<Map> regionServerMbeans = configMBeans.get("regionServer");
+                if (regionServerMbeans != null) {
+                    regionServerAllMbeans.addAll(regionServerMbeans);
+                }
+                for (Map regionServer : regionServers) {
+
+                    String regionServerDisplayName = Util.convertToString(regionServer.get(ConfigConstants.DISPLAY_NAME), "");
+                    String regionServerMetricPrefix = metricPrefix + "|" + displayName + "|RegionServer|" + regionServerDisplayName + "|";
+                    JMXMetricCollector regionServerJmxCollector = new JMXMetricCollector(regionServer, regionServerAllMbeans, regionServerMetricPrefix);
+                    FutureTask<List<Metric>> regionTaskExecutor = new FutureTask<>(regionServerJmxCollector);
+                    configuration.getExecutorService().submit(regionServerDisplayName + " metric collection Task", regionTaskExecutor);
+                    futureTaskList.add(regionTaskExecutor);
+                    logger.debug("starting future task for region {}", regionServerDisplayName);
+                }
             }
 
-            List<Map> regionServerAllMbeans = new ArrayList<Map>();
-            if (commonMBeans != null) {
-                regionServerAllMbeans.addAll(commonMBeans);
-            }
-
-
-            List<Map> regionServerMbeans = configMBeans.get("regionServer");
-            if (regionServerMbeans != null) {
-                regionServerAllMbeans.addAll(regionServerMbeans);
-            }
-            for (Map regionServer : regionServers) {
-
-                String regionServerDisplayName = Util.convertToString(regionServer.get(ConfigConstants.DISPLAY_NAME), "");
-                String regionServerMetricPrefix = metricPrefix + "|" + displayName + "|RegionServer|" + regionServerDisplayName + "|";
-                JMXMetricCollector regionServerJmxCollector = new JMXMetricCollector(regionServer, regionServerAllMbeans, regionServerMetricPrefix, phaser, metrics);
-                configuration.getExecutorService().submit(regionServerDisplayName + " metric collection Task", regionServerJmxCollector);
-                logger.debug("Registering phaser for {}", regionServerDisplayName);
+            //collect all the metrics
+            for(FutureTask task : futureTaskList) {
+                try {
+                    List<Metric> taskMetrics = (List<Metric>) task.get();
+                    metrics.addAll(taskMetrics);
+                } catch (InterruptedException var6) {
+                    logger.error("Task interrupted. ", var6);
+                } catch (ExecutionException var7) {
+                    logger.error("Task execution failed. ", var7);
+                }
             }
             //Wait for all tasks to finish
-            phaser.arriveAndAwaitAdvance();
             if (metrics.size() > 0) {
                 metricWriter.transformAndPrintMetrics(metrics);
             }
