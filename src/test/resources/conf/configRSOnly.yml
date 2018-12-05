@@ -10,6 +10,7 @@ metricPrefix: Custom Metrics|HBase
 # List of HBase Instances
 instances:
    - displayName: "Local HBase"
+     serviceUrl: "service:jmx:rmi:///jndi/rmi://127.0.0.1:10101/jmxrmi"
      host: "localhost"
      port: 10101
      username:
@@ -31,7 +32,6 @@ instances:
          # Provide password or encryptedPassword
          password:
          encryptedPassword:
-
 
 encryptionKey:
 
@@ -111,7 +111,7 @@ mbeans:
             - AppendSize_min:
                  alias: "AppendSize_min"
             - AppendSize_max:
-                 alias: "AppendSize_min"
+                 alias: "AppendSize_max"
 
 derivedMetrics:
     - derivedMetricPath: "Local HBase|RegionServer|Cluster|Server|storeCount"

@@ -11,26 +11,22 @@ package com.appdynamics.monitors.hbase;
 
 import com.appdynamics.extensions.ABaseMonitor;
 import com.appdynamics.extensions.TasksExecutionServiceProvider;
+import com.appdynamics.extensions.conf.MonitorContextConfiguration;
 import com.appdynamics.extensions.util.AssertUtils;
-import com.singularity.ee.agent.systemagent.api.exception.TaskExecutionException;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.PatternLayout;
+import com.appdynamics.monitors.hbase.Config.Stats;
 import org.slf4j.LoggerFactory;
 
-import java.io.OutputStreamWriter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class HBaseMonitor extends ABaseMonitor {
 
     private static final org.slf4j.Logger logger = LoggerFactory.getLogger(HBaseMonitor.class);
-    private static final String CONFIG_ARG = "config-file";
-    private static final String METRIC_PREFIX = "Custom Metrics|HBase|";
+    private static final String CONFIG_ARG = Constant.CONFIG_ARG;
+    private static final String METRIC_PREFIX = Constant.METRIC_PREFIX;
+    private static final String METRIC_ARG = Constant.METRIC_ARG;
+    private MonitorContextConfiguration monitorContextConfiguration;
+    private Map<String, ?> configYml;
 
 
     @Override
@@ -40,52 +36,54 @@ public class HBaseMonitor extends ABaseMonitor {
 
     @Override
     public String getMonitorName() {
-        return "HBase Monitor";
+        return Constant.MonitorName;
     }
 
     @Override
     protected void doRun(TasksExecutionServiceProvider serviceProvider) {
-        List<Map<String, String>> instances = (List<Map<String, String>>) configuration.getConfigYml().get("instances");
+        List<Map<String, String>> instances = (List<Map<String, String>>) configYml.get("instances");
         AssertUtils.assertNotNull(instances, "The 'instances' section in config.yml is not initialised");
         for (Map server : instances) {
-            HBaseMonitorTask task = new HBaseMonitorTask(serviceProvider, server);
+            server.put("encryptionKey", configYml.get("encryptionKey"));
+            HBaseMonitorTask task = new HBaseMonitorTask(monitorContextConfiguration, serviceProvider.getMetricWriteHelper(), server);
             serviceProvider.submit((String) server.get("name"), task);
         }
     }
 
     @Override
     protected int getTaskCount() {
-        List<Map<String, String>> instances = (List<Map<String, String>>) configuration.getConfigYml().get("instances");
+        List<Map<String, String>> instances = (List<Map<String, String>>) monitorContextConfiguration.getConfigYml().get("instances");
         AssertUtils.assertNotNull(instances, "The 'instances' section in config.yml is not initialised");
         return instances.size();
     }
 
-    public static void main(String[] args) throws TaskExecutionException {
+    @Override
+    protected void initializeMoreStuff(Map<String, String> args) {
 
-        ConsoleAppender ca = new ConsoleAppender();
-        ca.setWriter(new OutputStreamWriter(System.out));
-        ca.setLayout(new PatternLayout("%-5p [%t]: %m%n"));
-        ca.setThreshold(Level.DEBUG);
-
-        org.apache.log4j.Logger.getRootLogger().addAppender(ca);
-
-        final HBaseMonitor monitor = new HBaseMonitor();
-
-        final Map<String, String> taskArgs = new HashMap<String, String>();
-        taskArgs.put(CONFIG_ARG, "src/main/resources/conf/config.yml");
-
-        //monitor.execute(taskArgs, null);
-
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-        scheduler.scheduleAtFixedRate(new Runnable() {
-            public void run() {
-                try {
-                    monitor.execute(taskArgs, null);
-                } catch (Exception e) {
-                    logger.error("Error while running the task", e);
-                }
-            }
-        }, 2, 30, TimeUnit.SECONDS);
-
+        monitorContextConfiguration = getContextConfiguration();
+        configYml = monitorContextConfiguration.getConfigYml();
+        logger.info("initializing metric.xml file");
+        this.getContextConfiguration().setMetricXml(args.get("metric-file"), Stats.class);
     }
+
+//    public static void main(String[] args) throws TaskExecutionException {
+//
+//        ConsoleAppender ca = new ConsoleAppender();
+//        ca.setWriter(new OutputStreamWriter(System.out));
+//        ca.setLayout(new PatternLayout("%-5p [%t]: %m%n"));
+//        ca.setThreshold(Level.DEBUG);
+//
+//        org.apache.log4j.Logger.getRootLogger().addAppender(ca);
+//
+//        final Map<String, String> taskArgs = new HashMap<String, String>();
+//        taskArgs.put(CONFIG_ARG, "src/main/resources/conf/config.yml");
+//        taskArgs.put(METRIC_ARG, "src/main/resources/conf/metrics.xml");
+//        try {
+//            final HBaseMonitor monitor = new HBaseMonitor();
+//            monitor.execute(taskArgs, null);
+//        } catch (Exception e) {
+//            logger.error("Error while running the task", e);
+//        }
+//    }
+
 }

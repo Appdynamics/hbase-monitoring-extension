@@ -1,0 +1,80 @@
+<!--
+  ~ Copyright 2018. AppDynamics LLC and its affiliates.
+  ~ All Rights Reserved.
+  ~ This is unpublished proprietary source code of AppDynamics LLC and its affiliates.
+  ~ The copyright notice above does not evidence any actual or intended publication of such source code.
+  -->
+
+<!--
+aggregationType = AVERAGE | SUM | OBSERVATION
+timeRollUpType = AVERAGE | SUM | CURRENT
+clusterRollUpType = INDIVIDUAL | COLLECTIVE
+-->
+<!--
+Set delta = true for metric to report per-min data
+-->
+<stats>
+    <mbeans name="common">
+        <mbeanObject objectName="Hadoop:service=HBase,name=JvmMetrics">
+            <metric attr="MemHeapCommittedM" alias="MemHeapCommittedM" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="MemHeapMaxM" alias="MemHeapMaxM" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+        </mbeanObject>
+
+    </mbeans>
+    <mbeans name="master">
+        <mbeanObject objectName="Hadoop:service=HBase,name=Master,sub=AssignmentManger">
+            <metric attr="BulkAssign_max" alias="BulkAssign_max" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="Assign_max" alias="Assign_max" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+        </mbeanObject>
+        <mbeanObject objectName="Hadoop:service=HBase,name=Master,sub=Server">
+            <metric attr="averageLoad" alias="averageLoad" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="clusterRequests" alias="clusterRequests" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="numDeadRegionServers" alias="numDeadRegionServers" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="numRegionServers" alias="numRegionServers" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+        </mbeanObject>
+
+    </mbeans>
+    <mbeans name="regionServer">
+        <mbeanObject objectName="Hadoop:service=HBase,name=RegionServer,sub=Server">
+            <metric attr="storeCount" alias="storeCount" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE" multiplier="100"/>
+            <metric attr="storeFileCount" alias="storeFileCount" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="storeFileIndexSize" alias="storeFileIndexSize" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+        </mbeanObject>
+        <mbeanObject objectName="Hadoop:service=HBase,name=RegionServer,sub=IPC">
+            <metric attr="TotalCallTime_num_ops" alias="TotalCallTime_num_ops" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="exceptions" alias="exceptions" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="ProcessCallTime_num_ops" alias="ProcessCallTime_num_ops" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+        </mbeanObject>
+        <mbeanObject objectName="Hadoop:service=HBase,name=RegionServer,sub=WAL">
+            <metric attr="AppendSize_num_ops" alias="AppendSize_num_ops" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="AppendSize_min" alias="AppendSize_min" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="AppendSize_max" alias="AppendSize_max" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+        </mbeanObject>
+    </mbeans>
+    <mbeans name="zooKeeperService">
+        <mbeanObject objectName="org.apache.ZooKeeperService:name0=StandaloneServer_port-1">
+            <metric attr="NumAliveConnections" alias="NumAliveConnections" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="MaxClientCnxnsPerHost" alias="MaxClientCnxnsPerHost" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+        </mbeanObject>
+    </mbeans>
+
+</stats>

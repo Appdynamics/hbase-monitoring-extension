@@ -9,8 +9,11 @@
 package com.appdynamics.monitors.hbase;
 
 
+import com.appdynamics.monitors.hbase.Config.MbeanObjectConfig;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 
 public class Util {
 
@@ -19,6 +22,11 @@ public class Util {
             return defaultStr;
         }
         return field.toString();
+    }
+
+    public static void addAllValidMbeans(List<MbeanObjectConfig> allMbeans, List<MbeanObjectConfig> fetchedMbeans) {
+        if (fetchedMbeans != null && !fetchedMbeans.isEmpty())
+            allMbeans.addAll(fetchedMbeans);
     }
 
     public static String[] split(final String metricType, final String splitOn) {

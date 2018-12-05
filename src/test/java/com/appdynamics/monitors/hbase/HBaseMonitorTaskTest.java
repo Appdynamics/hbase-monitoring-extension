@@ -8,29 +8,30 @@
 
 package com.appdynamics.monitors.hbase;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 import com.appdynamics.extensions.MetricWriteHelper;
 import com.appdynamics.extensions.MonitorExecutorService;
 import com.appdynamics.extensions.TasksExecutionServiceProvider;
-import com.appdynamics.extensions.conf.MonitorConfiguration;
-import com.appdynamics.extensions.yml.YmlReader;
-import com.appdynamics.monitors.hbase.metrics.JMXMetricCollector;
+import com.appdynamics.extensions.conf.MonitorContext;
+import com.appdynamics.extensions.conf.MonitorContextConfiguration;
+import com.appdynamics.extensions.conf.modules.MonitorExecutorServiceModule;
+import com.appdynamics.extensions.metrics.Metric;
+import com.appdynamics.monitors.hbase.Config.Stats;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import static org.mockito.Matchers.anyList;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.File;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Phaser;
 
 /**
  * @author Satish Muddam
@@ -44,87 +45,84 @@ public class HBaseMonitorTaskTest {
 
     private Map server;
     @Mock
-    private MonitorConfiguration monitorConfiguration;
+    private MonitorContextConfiguration monitorConfiguration;
     @Mock
     private MetricWriteHelper metricWriter;
+    @Mock
+    private MonitorContext context;
     private Map config;
-    @Mock
-    private MonitorExecutorService executorService;
-
-    @Mock
-    private Phaser phaser;
 
     private Map<String, List<Map>> configMBeans;
 
-    @Test
-    public void testMasterAndRegionServers() throws Exception {
+    private ArgumentCaptor<List> pathCaptor = ArgumentCaptor.forClass(List.class);
 
-        config = YmlReader.readFromFileAsMap(new File("src/test/resources/conf/config.yaml"));
-
+    @Before
+    public void setup(){
+        MonitorContextConfiguration contextConfiguration = ConfigTestUtil.getContextConfiguration("src/test/resources/conf/metrics.xml", "src/test/resources/conf/config.yml");
+        Stats stats = (Stats) contextConfiguration.getMetricsXml();
+        config = contextConfiguration.getConfigYml();
+        MonitorExecutorServiceModule executorServiceModule = Mockito.spy(new MonitorExecutorServiceModule());
+        executorServiceModule.initExecutorService(config);
+        MonitorExecutorService executorService = executorServiceModule.getExecutorService();
         List<Map<String, String>> instances = (List<Map<String, String>>) config.get("instances");
         server = instances.get(0);
-        configMBeans = (Map<String, List<Map>>) config.get(ConfigConstants.MBEANS);
+        configMBeans = (Map<String, List<Map>>) config.get(Constant.MBEANS);
 
-        PowerMockito.whenNew(Phaser.class)
-                .withNoArguments().thenReturn(phaser);
-
-        Mockito.when(serviceProvider.getMonitorConfiguration()).thenReturn(monitorConfiguration);
         Mockito.when(serviceProvider.getMetricWriteHelper()).thenReturn(metricWriter);
         Mockito.when(monitorConfiguration.getConfigYml()).thenReturn(config);
-        Mockito.when(monitorConfiguration.getExecutorService()).thenReturn(executorService);
+        Mockito.when(monitorConfiguration.getContext()).thenReturn(context);
+        Mockito.when(monitorConfiguration.getMetricsXml()).thenReturn(stats);
+        Mockito.when(monitorConfiguration.getMetricPrefix()).thenReturn("Custom Metrics|HBase|");
+        Mockito.when(context.getExecutorService()).thenReturn(executorService);
+    }
 
-        HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(serviceProvider, server);
+    @Test
+    public void testMasterAndRegionServers() throws Exception {
+        HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(monitorConfiguration, metricWriter, server);
+        HBaseMonitorTask task = PowerMockito.spy(hBaseMonitorTask);
+        List<Metric> metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/metrics.txt");
+        PowerMockito.doReturn(metrics).when(task,"collectTaskMetrics");
 
-        hBaseMonitorTask.run();
+        task.run();
 
-        verify(executorService, times(3)).submit(anyString(), any(JMXMetricCollector.class));
+        verify(metricWriter).transformAndPrintMetrics(pathCaptor.capture());
+        Assert.assertEquals(((List<Metric>)pathCaptor.getValue()).size(), 33);
+        verify(metricWriter, times(1)).transformAndPrintMetrics(anyList());
     }
 
     @Test
     public void testMasterOnly() throws Exception {
+        MonitorContextConfiguration contextConfiguration = ConfigTestUtil.getContextConfiguration("src/test/resources/conf/metrics.xml", "src/test/resources/conf/configMasterOnly.yml");
+        Map masterConfig = contextConfiguration.getConfigYml();
+        Map masterServer = ((List<Map<String, String>>) masterConfig.get("instances")).get(0);
 
-        config = YmlReader.readFromFileAsMap(new File("src/test/resources/conf/configMasterOnly.yaml"));
+        HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(monitorConfiguration, metricWriter, masterServer);
+        HBaseMonitorTask task = PowerMockito.spy(hBaseMonitorTask);
+        List<Metric> metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/masterMetrics.txt");
+        PowerMockito.doReturn(metrics).when(task,"collectTaskMetrics");
 
-        List<Map<String, String>> instances = (List<Map<String, String>>) config.get("instances");
-        server = instances.get(0);
-        configMBeans = (Map<String, List<Map>>) config.get(ConfigConstants.MBEANS);
+        task.run();
 
-        PowerMockito.whenNew(Phaser.class)
-                .withNoArguments().thenReturn(phaser);
-
-        Mockito.when(serviceProvider.getMonitorConfiguration()).thenReturn(monitorConfiguration);
-        Mockito.when(serviceProvider.getMetricWriteHelper()).thenReturn(metricWriter);
-        Mockito.when(monitorConfiguration.getConfigYml()).thenReturn(config);
-        Mockito.when(monitorConfiguration.getExecutorService()).thenReturn(executorService);
-
-        HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(serviceProvider, server);
-
-        hBaseMonitorTask.run();
-
-        verify(executorService, times(3)).submit(anyString(), any(JMXMetricCollector.class));
+        verify(metricWriter).transformAndPrintMetrics(pathCaptor.capture());
+        Assert.assertEquals(((List<Metric>)pathCaptor.getValue()).size(), 11);
+        verify(metricWriter, times(1)).transformAndPrintMetrics(anyList());
     }
 
     @Test
     public void testRegionServerOnly() throws Exception {
+        MonitorContextConfiguration contextConfiguration = ConfigTestUtil.getContextConfiguration("src/test/resources/conf/metrics.xml", "src/test/resources/conf/configRSOnly.yml");
+        Map rsConfig = contextConfiguration.getConfigYml();
+        Map regionServer = ((List<Map<String, String>>) rsConfig.get("instances")).get(0);
 
-        config = YmlReader.readFromFileAsMap(new File("src/test/resources/conf/configRSOnly.yaml"));
+        HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(monitorConfiguration, metricWriter, regionServer);
+        HBaseMonitorTask task = PowerMockito.spy(hBaseMonitorTask);
+        List<Metric> metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/rsMetrics.txt");
+        PowerMockito.doReturn(metrics).when(task,"collectTaskMetrics");
 
-        List<Map<String, String>> instances = (List<Map<String, String>>) config.get("instances");
-        server = instances.get(0);
-        configMBeans = (Map<String, List<Map>>) config.get(ConfigConstants.MBEANS);
+        task.run();
 
-        PowerMockito.whenNew(Phaser.class)
-                .withNoArguments().thenReturn(phaser);
-
-        Mockito.when(serviceProvider.getMonitorConfiguration()).thenReturn(monitorConfiguration);
-        Mockito.when(serviceProvider.getMetricWriteHelper()).thenReturn(metricWriter);
-        Mockito.when(monitorConfiguration.getConfigYml()).thenReturn(config);
-        Mockito.when(monitorConfiguration.getExecutorService()).thenReturn(executorService);
-
-        HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(serviceProvider, server);
-
-        hBaseMonitorTask.run();
-
-        verify(executorService, times(3)).submit(anyString(), any(JMXMetricCollector.class));
+        verify(metricWriter).transformAndPrintMetrics(pathCaptor.capture());
+        Assert.assertEquals(((List<Metric>)pathCaptor.getValue()).size(), 23);
+        verify(metricWriter, times(1)).transformAndPrintMetrics(anyList());
     }
 }

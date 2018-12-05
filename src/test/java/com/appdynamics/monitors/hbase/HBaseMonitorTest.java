@@ -23,7 +23,8 @@ public class HBaseMonitorTest {
     public void test() throws TaskExecutionException {
         HBaseMonitor monitor = new HBaseMonitor();
         Map<String, String> taskArgs = Maps.newHashMap();
-        taskArgs.put("config-file", "src/test/resources/conf/config.yaml");
+        taskArgs.put("config-file", "src/test/resources/conf/config.yml");
+        taskArgs.put("metric-file", "src/test/resources/conf/metrics.xml");
         monitor.execute(taskArgs, null);
     }
 }

@@ -8,9 +8,13 @@
 
 package com.appdynamics.monitors.hbase.metrics;
 
+import com.appdynamics.extensions.conf.MonitorContextConfiguration;
 import static com.appdynamics.extensions.crypto.CryptoUtil.getPassword;
 import com.appdynamics.extensions.metrics.Metric;
-import com.appdynamics.monitors.hbase.ConfigConstants;
+import com.appdynamics.monitors.hbase.Config.MbeanObjectConfig;
+import com.appdynamics.monitors.hbase.Config.MetricConfig;
+import com.appdynamics.monitors.hbase.Config.MetricConverter;
+import com.appdynamics.monitors.hbase.Constant;
 import com.appdynamics.monitors.hbase.HBaseMBeanKeyPropertyEnum;
 import com.appdynamics.monitors.hbase.JMXConnectionAdapter;
 import com.appdynamics.monitors.hbase.Util;
@@ -19,6 +23,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.LoggerFactory;
 
 import javax.management.Attribute;
@@ -41,25 +46,25 @@ import java.util.concurrent.Callable;
 public class JMXMetricCollector implements Callable<List<Metric>> {
 
     static final org.slf4j.Logger logger = LoggerFactory.getLogger(JMXMetricCollector.class);
-
+    private ObjectMapper objectMapper = new ObjectMapper();
     private Map server;
-    private List<Map> mbeans;
+    private List<MbeanObjectConfig> mbeans;
     private String metricPrefix;
+    private MonitorContextConfiguration configuration;
 
-    public JMXMetricCollector(Map server, List<Map> mbeans, String metricPrefix) {
+    public JMXMetricCollector(Map server, List<MbeanObjectConfig> mbeans, String metricPrefix, MonitorContextConfiguration configuration) {
         this.server = server;
         this.mbeans = mbeans;
         this.metricPrefix = metricPrefix;
+        this.configuration = configuration;
     }
 
 
     public List<Metric> call() {
-
         List<Metric> collectedMetrics = Lists.newArrayList();
-
         JMXConnectionAdapter jmxAdapter = null;
-        JMXConnector jmxConnection = null;
-        String serverDisplayName = Util.convertToString(server.get(ConfigConstants.DISPLAY_NAME), "");
+        JMXConnector jmxConnector = null;
+        String serverDisplayName = Util.convertToString(server.get(Constant.DISPLAY_NAME), "");
 
         try {
             logger.debug("Collecting metrics from {}", serverDisplayName);
@@ -73,7 +78,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
 
             if (jmxAdapter != null) {
                 try {
-                    jmxConnection = jmxAdapter.open();
+                    jmxConnector = jmxAdapter.open();
                 } catch (Exception e) {
                     logger.error("Error opening JMX connection to server {}", serverDisplayName, e);
                     return collectedMetrics;
@@ -81,38 +86,13 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
             }
 
             try {
-                if (jmxConnection != null) {
-
-                    for (Map aConfigMBean : mbeans) {
-
-                        String configObjectName = Util.convertToString(aConfigMBean.get(ConfigConstants.OBJECT_NAME), "");
+                if (jmxConnector != null) {
+                    for (MbeanObjectConfig aConfigMBeanObject : mbeans) {
+                        String configObjectName = aConfigMBeanObject.getObjectName(Constant.OBJECT_NAME);
                         logger.debug("Processing mbean %s from the config file", configObjectName);
+                        Set<ObjectInstance> objectInstances = jmxAdapter.queryMBeans(jmxConnector, ObjectName.getInstance(configObjectName));
 
-                        //Each mbean mentioned in the config.yml can fetch multiple object instances. Metrics need to be extracted
-                        //from each object instance separately.
-                        Set<ObjectInstance> objectInstances = jmxAdapter.queryMBeans(jmxConnection, ObjectName.getInstance(configObjectName));
-                        for (ObjectInstance instance : objectInstances) {
-                            List<String> metricNamesDictionary = jmxAdapter.getReadableAttributeNames(jmxConnection, instance);
-                            String metricPath = getMetricPath(instance, metricPrefix);
-                            Map<String, Map> metricsToCollectWithConfig = buildMetricToCollect(aConfigMBean);
-                            List<String> metricNamesToBeExtracted = applyFilters(metricsToCollectWithConfig.keySet(), metricNamesDictionary);
-                            List<Attribute> attributes = jmxAdapter.getAttributes(jmxConnection, instance.getObjectName(), metricNamesToBeExtracted.toArray(new String[metricNamesToBeExtracted.size()]));
-                            for (Attribute attr : attributes) {
-                                try {
-                                    String attrName = attr.getName();
-                                    Object value = attr.getValue();
-                                    if (value != null) {
-                                        Metric metric = new Metric(attrName, String.valueOf(value), metricPath + attrName, metricsToCollectWithConfig.get(attrName));
-                                        collectedMetrics.add(metric);
-                                    } else {
-                                        logger.warn("Ignoring metric {} with path {} as the value is null", attrName, metricPath);
-                                    }
-
-                                } catch (Exception e) {
-                                    logger.error("Error collecting value for {} {}", instance.getObjectName(), attr.getName(), e);
-                                }
-                            }
-                        }
+                        collectedMetrics.addAll(collectJMXattributeMetrics(objectInstances, jmxAdapter, jmxConnector, aConfigMBeanObject));
                     }
                     logger.debug("Successfully completed JMX mbeans metrics for {}", serverDisplayName);
                 }
@@ -124,7 +104,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
 
             if (jmxAdapter != null) {
                 try {
-                    jmxAdapter.close(jmxConnection);
+                    jmxAdapter.close(jmxConnector);
                 } catch (Exception e) {
                     logger.error("Failed to close the JMX connection for server {}", serverDisplayName);
                 }
@@ -133,23 +113,48 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
         }
     }
 
-    private Map<String, Map> buildMetricToCollect(Map aConfigMBean) {
+    private Map<String, MetricConfig> buildMetricToCollect(MetricConfig[] metricConfigs) {
 
-        Map<String, Map> metricsWithConfig = Maps.newHashMap();
-
-        List<Map<String, Map>> configMetrics = (List<Map<String, Map>>) aConfigMBean.get(ConfigConstants.METRICS);
-
-        for (Map<String, Map> metricConfigured : configMetrics) {
-            for (Map.Entry<String, Map> metricEntry : metricConfigured.entrySet()) {
-                String metricName = metricEntry.getKey();
-                Map metricPropertiesMap = metricEntry.getValue();
-                metricsWithConfig.put(metricName, metricPropertiesMap);
-            }
+        Map<String, MetricConfig> metricsWithConfig = Maps.newHashMap();
+        for (MetricConfig metricConfig : metricConfigs) {
+            String metricName = metricConfig.getAttr();
+            metricsWithConfig.put(metricName, metricConfig);
         }
         return metricsWithConfig;
     }
 
-    private List<String> applyFilters(Set<String> metricsNames, List<String> metricNamesDictionary) throws IntrospectionException, ReflectionException, InstanceNotFoundException, IOException {
+    private List<Metric> collectJMXattributeMetrics(Set<ObjectInstance> objectInstances, JMXConnectionAdapter jmxAdapter, JMXConnector jmxConnector, MbeanObjectConfig aConfigMBeanObject) throws IntrospectionException, ReflectionException, InstanceNotFoundException, IOException {
+        List<Metric> collectedMetrics = Lists.newArrayList();
+        //Each mbean mentioned in the config.yml can fetch multiple object instances. Metrics need to be extracted
+        //from each object instance separately.
+        for (ObjectInstance instance : objectInstances){
+            List<String> metricNamesDictionary = jmxAdapter.getReadableAttributeNames(jmxConnector, instance);
+            String metricPath = getMetricPath(instance, metricPrefix);
+            Map<String, MetricConfig> metricsToCollectWithConfig = buildMetricToCollect(aConfigMBeanObject.getMetricConfigs());
+            List<String> metricNamesToBeExtracted = applyFilters(metricsToCollectWithConfig.keySet(), metricNamesDictionary);
+            List<Attribute> attributes = jmxAdapter.getAttributes(jmxConnector, instance.getObjectName(), metricNamesToBeExtracted.toArray(new String[metricNamesToBeExtracted.size()]));
+            for (Attribute attr : attributes) {
+                try {
+                    String attrName = attr.getName();
+                    Object value = attr.getValue();
+                    if (value != null) {
+                        MetricConfig config = metricsToCollectWithConfig.get(attrName);
+                        if (config.getMetricConverter() != null)
+                            value = getConvertedStatus(config.getMetricConverter(), String.valueOf(value));
+                        Metric metric = new Metric(attrName, String.valueOf(value), metricPath + attrName, objectMapper.convertValue(config, Map.class));
+                        collectedMetrics.add(metric);
+                    } else {
+                        logger.warn("Ignoring metric {} with path {} as the value is null", attrName, metricPath);
+                    }
+                } catch (Exception e) {
+                    logger.error("Error collecting value for {} {}", instance.getObjectName(), attr.getName(), e);
+                }
+            }
+        }
+        return collectedMetrics;
+    }
+
+    private List<String> applyFilters(Set<String> metricsNames, List<String> metricNamesDictionary) {
         Set<String> filteredSet = Sets.newHashSet();
         new IncludeFilter(metricsNames).apply(filteredSet, metricNamesDictionary);
         return Lists.newArrayList(filteredSet);
@@ -158,17 +163,17 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
 
     private JMXConnectionAdapter getJMXConnectionAdapter(Map configMap) throws MalformedURLException {
 
-        String serviceUrl = Util.convertToString(configMap.get(ConfigConstants.SERVICE_URL), "");
-        String host = Util.convertToString(configMap.get(ConfigConstants.HOST), "");
+        String serviceUrl = Util.convertToString(configMap.get(Constant.SERVICE_URL), "");
+        String host = Util.convertToString(configMap.get(Constant.HOST), "");
 
         if (Strings.isNullOrEmpty(serviceUrl) && Strings.isNullOrEmpty(host)) {
             logger.info("JMX details not provided, not creating connection");
             return null;
         }
 
-        String portStr = Util.convertToString(configMap.get(ConfigConstants.PORT), "");
+        String portStr = Util.convertToString(configMap.get(Constant.PORT), "");
         int port = portStr != null ? Integer.parseInt(portStr) : -1;
-        String username = Util.convertToString(configMap.get(ConfigConstants.USERNAME), "");
+        String username = Util.convertToString(configMap.get(Constant.USERNAME), "");
         String password = getPassword(configMap);
 
         try {
@@ -180,7 +185,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
         }
     }
 
-    public String getMetricPath(ObjectInstance instance, String metricPrefix) {
+    private String getMetricPath(ObjectInstance instance, String metricPrefix) {
         if (instance == null) {
             return "";
         }
@@ -189,7 +194,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
 
         StringBuilder metricsKey = new StringBuilder(metricPrefix);
 
-        if (!metricsKey.toString().contains(name)) {
+        if (name != null && !metricsKey.toString().contains(name)) {
             metricsKey.append(Strings.isNullOrEmpty(name) ? "" : name + "|");
         }
         metricsKey.append(Strings.isNullOrEmpty(subType) ? "" : subType + "|");
@@ -205,5 +210,19 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
 
     private ObjectName getObjectName(ObjectInstance instance) {
         return instance.getObjectName();
+    }
+
+
+    /**
+     * @param converters
+     * @param status
+     * @return
+     */
+    private String getConvertedStatus(MetricConverter[] converters, String status) {
+        for (MetricConverter converter : converters) {
+            if (converter.getLabel().equals(status))
+                return converter.getValue();
+        }
+        return "";
     }
 }
