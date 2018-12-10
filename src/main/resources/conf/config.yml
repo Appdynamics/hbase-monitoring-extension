@@ -38,7 +38,7 @@ instances:
 encryptionKey:
 
 # number of concurrent tasks.
-# This doesn't need to be changed unless many instances are configured
+# This doesn't need to be changed unless many instances are configured. Running 1 new thread for each new instance or its regionServers
 numberOfThreads: 10
 
 derivedMetrics:
