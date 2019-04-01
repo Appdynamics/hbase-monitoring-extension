@@ -1,10 +1,19 @@
-package com.appdynamics.monitors.hbase;
+/*
+ *   Copyright 2019. AppDynamics LLC and its affiliates.
+ *   All Rights Reserved.
+ *   This is unpublished proprietary source code of AppDynamics LLC and its affiliates.
+ *   The copyright notice above does not evidence any actual or intended publication of such source code.
+ *
+ */
+
+package com.appdynamics.extensions.hbase;
 
 import com.appdynamics.extensions.AMonitorJob;
 import com.appdynamics.extensions.conf.MonitorContextConfiguration;
+import com.appdynamics.extensions.hbase.Config.MbeanObjectConfig;
+import com.appdynamics.extensions.hbase.Config.Stats;
+import com.appdynamics.extensions.hbase.Util.MbeanUtil;
 import com.appdynamics.extensions.metrics.Metric;
-import com.appdynamics.monitors.hbase.Config.MbeanObjectConfig;
-import com.appdynamics.monitors.hbase.Config.Stats;
 import com.google.common.collect.Lists;
 import org.mockito.Mockito;
 
@@ -30,18 +39,18 @@ public class ConfigTestUtil {
     public static List<MbeanObjectConfig> collectAllMasterMbeans(Stats stats){
         List<MbeanObjectConfig> mbeanObjectConfigs = Lists.newArrayList();
         List<MbeanObjectConfig> commonMBeansObject = stats.getMatchingMbeanConfig("common");
-        Util.addAllValidMbeans(mbeanObjectConfigs, commonMBeansObject);
+        MbeanUtil.addAllValidMbeans(mbeanObjectConfigs, commonMBeansObject);
 //            Picking zookeeper metrics for master only
-        Util.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("zooKeeperService"));
-        Util.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("master"));
+        MbeanUtil.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("zooKeeperService"));
+        MbeanUtil.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("master"));
         return mbeanObjectConfigs;
     }
 
     public static List<MbeanObjectConfig> collectAllRegionMbeans(Stats stats){
         List<MbeanObjectConfig> mbeanObjectConfigs = Lists.newArrayList();
         List<MbeanObjectConfig> commonMBeansObject = stats.getMatchingMbeanConfig("common");
-        Util.addAllValidMbeans(mbeanObjectConfigs, commonMBeansObject);
-        Util.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("regionServer"));
+        MbeanUtil.addAllValidMbeans(mbeanObjectConfigs, commonMBeansObject);
+        MbeanUtil.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("regionServer"));
         return mbeanObjectConfigs;
     }
 

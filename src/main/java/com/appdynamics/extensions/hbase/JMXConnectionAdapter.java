@@ -1,12 +1,12 @@
 /*
- *   Copyright 2018. AppDynamics LLC and its affiliates.
+ *   Copyright 2019. AppDynamics LLC and its affiliates.
  *   All Rights Reserved.
  *   This is unpublished proprietary source code of AppDynamics LLC and its affiliates.
  *   The copyright notice above does not evidence any actual or intended publication of such source code.
  *
  */
 
-package com.appdynamics.monitors.hbase;
+package com.appdynamics.extensions.hbase;
 
 
 import com.google.common.base.Strings;
@@ -108,8 +108,4 @@ public class JMXConnectionAdapter {
         return Lists.newArrayList();
     }
 
-
-    boolean matchAttributeName(Attribute attribute, String matchedWith) {
-        return attribute.getName().equalsIgnoreCase(matchedWith);
-    }
 }

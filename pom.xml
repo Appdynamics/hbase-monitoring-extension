@@ -12,16 +12,16 @@
 
     <groupId>com.appdynamics.extensions</groupId>
     <artifactId>hbase-monitoring-extension</artifactId>
-    <version>3.1.2</version>
+    <version>4.0.0</version>
     <packaging>jar</packaging>
 
     <name>hbase-monitoring-extension</name>
-    <url>http://maven.apache.org</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
         <target.dir>${project.build.directory}/HBaseMonitor</target.dir>
+        <target.name>HBaseMonitor</target.name>
     </properties>
 
     <dependencies>
@@ -34,18 +34,12 @@
         <dependency>
             <groupId>com.appdynamics</groupId>
             <artifactId>appd-exts-commons</artifactId>
-            <version>2.1.0</version>
+            <version>2.2.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.4</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.9</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -75,13 +69,13 @@
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-api-mockito</artifactId>
-            <version>1.4.7</version>
+            <version>1.6.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-module-junit4</artifactId>
-            <version>1.4.7</version>
+            <version>1.5.6</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -103,8 +97,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>2.3.2</version>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
             <plugin>

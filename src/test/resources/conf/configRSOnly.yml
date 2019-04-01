@@ -1,16 +1,15 @@
-### ANY CHANGES TO THIS FILE DOES NOT REQUIRE A RESTART ###
+# Use this only if SIM is enabled
+#metricPrefix: Custom Metrics|HBase
 
-#This will create this metric in all the tiers, under this path
-metricPrefix: Custom Metrics|HBase
-
-#This will create it in specific Tier/Component. Make sure to replace <COMPONENT_ID> with the appropriate one from your environment.
-#To find the <COMPONENT_ID> in your environment, please follow the screenshot https://docs.appdynamics.com/display/PRO42/Build+a+Monitoring+Extension+Using+Java
-#metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
+# If SIM is not enabled, then use this
+metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
+#To find the <COMPONENT_ID> in your environment,
+#please follow the screenshot https://docs.appdynamics.com/display/PRO42/Build+a+Monitoring+Extension+Using+Java
 
 # List of HBase Instances
-instances:
+servers:
    - displayName: "Local HBase"
-     serviceUrl: "service:jmx:rmi:///jndi/rmi://127.0.0.1:10101/jmxrmi"
+     serviceUrl: ""           #"service:jmx:rmi:///jndi/rmi://127.0.0.1:10101/jmxrmi" #provide jmx service URL [OR] provide [host][port] pair
      host: "localhost"
      port: 10101
      username:
@@ -19,6 +18,7 @@ instances:
      encryptedPassword:
      regionServers:
        - displayName: "RegionServer1"
+         serviceUrl: ""
          host: "localhost"
          port: 10101
          username:
@@ -26,6 +26,7 @@ instances:
          password:
          encryptedPassword:
        - displayName: "RegionServer2"
+         serviceUrl: ""
          host: "localhost"
          port: 10101
          username:
@@ -35,87 +36,29 @@ instances:
 
 encryptionKey:
 
-# number of concurrent tasks.
-# This doesn't need to be changed unless many instances are configured
-numberOfThreads: 10
+connection:
+  sslCertCheckEnabled: false
+  socketTimeout: 10000
+  connectTimeout: 10000
 
-
-#                                      List of metrics
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Glossary of terms(These terms are used as properties for each metric):
-#   alias
-#   aggregationType
-#   timeRollUpType
-#   clusterRollUpType                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
-#   multiplier -->not for derived metrics
-#   convert --> not for derived metrics
-#   delta --> not for derived metrics
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# The configuration of different metrics from various mbeans of HBase server
-mbeans:
-   # Common mbeans which are applicable to both master and region server
-   common:
-      - objectName: "Hadoop:service=HBase,name=JvmMetrics"
-        metrics:
-            - MemHeapCommittedM:
-                 alias: "MemHeapCommittedM"
-            - MemHeapMaxM:
-                 alias: "MemHeapMaxM"
-
-   # Master specific mbeans
-   master:
-      # This mbean is to get cluster related metrics.
-      - objectName: "Hadoop:service=HBase,name=Master,sub=AssignmentManger"
-        metrics:
-            - BulkAssign_max:
-                 alias: "BulkAssign_max"
-            - Assign_max:
-                 alias: "Assign_max"
-
-      - objectName: "Hadoop:service=HBase,name=Master,sub=Server"
-        metrics:
-            - averageLoad:
-                 alias: "averageLoad"
-            - clusterRequests:
-                 alias: "clusterRequests"
-            - numDeadRegionServers:
-                 alias: "numDeadRegionServers"
-            - numRegionServers:
-                 alias: "numRegionServers"
-   # region server specific mbeans
-   regionServer:
-      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=Server"
-        metrics:
-            - storeCount:
-                 alias: "storeCount"
-                 #delta : "true"
-                 multiplier : 100
-            - storeFileCount:
-                 alias: "storeFileCount"
-                 #delta : "true"
-            - storeFileIndexSize :
-                 alias: "storeFileIndexSize"
-      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=IPC"
-        metrics:
-            - TotalCallTime_num_ops:
-                alias: "TotalCallTime_num_ops"
-            - exceptions:
-                alias: "exceptions"
-            - ProcessCallTime_num_ops:
-                alias: "ProcessCallTime_num_ops"
-      - objectName: "Hadoop:service=HBase,name=RegionServer,sub=WAL"
-        metrics:
-            - AppendSize_num_ops:
-                 alias: "AppendSize_num_ops"
-            - AppendSize_min:
-                 alias: "AppendSize_min"
-            - AppendSize_max:
-                 alias: "AppendSize_max"
+ # For each server or regionServer you monitor, you need 1 thread per instance. If you have configured 1 server with 2 region servers, you will need a total of 3 threads.
+ # By default we want to support 3 servers with 2 regionServers for each, so it is 3 * 3 = 9 threads.
+numberOfThreads: 9
 
 derivedMetrics:
-    - derivedMetricPath: "Local HBase|RegionServer|Cluster|Server|storeCount"
-      formula: "Local HBase|RegionServer|{y}|Server|storeCount"
+    - derivedMetricPath: "Local HBase|RegionServer|Cluster|JvmMetrics|MemHeapMaxM"
+      formula: "Local HBase|RegionServer|{y}|JvmMetrics|MemHeapMaxM"
       aggregationType: “SUM"
       timeRollUpType: “SUM"
       clusterRollUpType: “COLLECTIVE”
+
+# Note: If the current "metricCharacterReplacer" is not working on your current machine,
+# please add escape charaters "\\" before your value. It changes from OS to OS, some need it, some don't
+# For Example, replace: "%" -> Becomes -> replace: "\\%"
+metricPathReplacements:
+   - replace: "%"
+     replaceWith: ""
+   - replace: ","
+     replaceWith: "-"
+   - replace: "."
+     replaceWith: "-"

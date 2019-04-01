@@ -1,4 +1,3 @@
-package com.appdynamics.monitors.hbase.Config;
 /*
  * Copyright 2018. AppDynamics LLC and its affiliates.
  * All Rights Reserved.
@@ -6,6 +5,7 @@ package com.appdynamics.monitors.hbase.Config;
  * The copyright notice above does not evidence any actual or intended publication of such source code.
  */
 
+package com.appdynamics.extensions.hbase.Config;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
