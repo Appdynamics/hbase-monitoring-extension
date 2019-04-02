@@ -73,7 +73,7 @@ public class HBaseMonitor extends ABaseMonitor {
     protected void initializeMoreStuff(Map<String, String> args) {
         monitorContextConfiguration = getContextConfiguration();
         logger.info("initializing metric.xml file");
-        this.getContextConfiguration().setMetricXml(args.get("metric-file"), Stats.class);
+        monitorContextConfiguration.setMetricXml(args.get("metric-file"), Stats.class);
     }
 
     public static void main(String[] args) {

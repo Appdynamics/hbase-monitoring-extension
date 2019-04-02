@@ -231,7 +231,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
 
     private String getPassword(Map server) {
         if (configuration.getConfigYml().get(ENCRYPTION_KEY) != null) {
-            String encryptionKey = configuration.getConfigYml().get(ENCRYPTION_KEY).toString();
+            String encryptionKey = (String) configuration.getConfigYml().get(ENCRYPTION_KEY);
             server.put(ENCRYPTION_KEY, encryptionKey);
         }
         return CryptoUtils.getPassword(server);
