@@ -43,6 +43,8 @@ import java.util.concurrent.Callable;
 /**
  * @author Satish Muddam, Prashant Mehta
  */
+
+// todo: refactoring needed
 public class JMXMetricCollector implements Callable<List<Metric>> {
 
     private static final Logger logger = ExtensionsLoggerFactory.getLogger(JMXMetricCollector.class);
@@ -64,6 +66,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
         List<Metric> collectedMetrics = Lists.newArrayList();
         JMXConnectionAdapter jmxAdapter = null;
         JMXConnector jmxConnector = null;
+        // todo: can you not use just a (String) to get and convert, going back to the discussion we had during jmx monitor this was brought up.
         String serverDisplayName = MbeanUtil.convertToString(server.get(Constant.DISPLAY_NAME), "");
 
         try {
@@ -87,7 +90,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
                 if (jmxConnector != null) {
                     for (MbeanObjectConfig aConfigMBeanObject : mbeans) {
                         String configObjectName = aConfigMBeanObject.getObjectName(OBJECT_NAME);
-                        logger.debug("Processing mbean %s from the config file", configObjectName);
+                        logger.debug("Processing mbean {} from the config file", configObjectName);
                         try {
                             Set<ObjectInstance> objectInstances = jmxAdapter.queryMBeans(jmxConnector, ObjectName.getInstance(configObjectName));
                             collectedMetrics.addAll(collectJMXattributeMetrics(objectInstances, jmxAdapter, jmxConnector, aConfigMBeanObject));
@@ -129,6 +132,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
         List<Metric> collectedMetrics = Lists.newArrayList();
         //Each mbean mentioned in the config.yml can fetch multiple object instances. Metrics need to be extracted
         //from each object instance separately.
+        // todo : this part can go inside a new class
         for (ObjectInstance instance : objectInstances) {
 
             List<String> jmxReadableAttributes = jmxAdapter.getReadableAttributeNames(jmxConnector, instance);
@@ -137,6 +141,7 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
             List<String> metricNamesToBeExtracted = applyFilters(mbeanMetricsWithConfig.keySet(), jmxReadableAttributes);
             List<Attribute> attributes = jmxAdapter.getAttributes(jmxConnector, instance.getObjectName(), metricNamesToBeExtracted.toArray(new String[metricNamesToBeExtracted.size()]));
             logger.debug("collecting metrics for {} with attributes {}", instance, attributes);
+            // todo : this part can go inside a newer class
 
             for (Attribute attr : attributes) {
                 try {

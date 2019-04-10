@@ -56,6 +56,9 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
         stats = (Stats) configuration.getMetricsXml();
     }
 
+    // todo: refactor this method
+    // todo: collect everything from master, then the server, then its region server and then move to the next server
+    // todo: each region server will create its own thread, so we want to be cautious of spawning new threads, refactoring needed
     public void run() {
         displayName = (String) server.get(Constant.DISPLAY_NAME);
         String metricPrefix = configuration.getMetricPrefix();
@@ -107,7 +110,7 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
         futureTaskList.add(taskExecutor);
         logger.debug("Added future task for {}", server.get(Constant.DISPLAY_NAME));
     }
-
+    //todo: need to have some clarity on how many threads are being generated and if we can limit to one thread per main server instead of having each thread for every region server as well, but that would also include a discussion on how if we have a thread for each region server will impact the extension and the machine its running on.
     private List<Metric> collectTaskMetrics() {
         List<Metric> metrics = Lists.newArrayList();
         for (FutureTask task : futureTaskList) {

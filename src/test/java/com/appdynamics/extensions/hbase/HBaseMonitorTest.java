@@ -19,6 +19,7 @@ import java.util.Map;
  */
 public class HBaseMonitorTest {
 
+    // todo method not needed
     @Test
     public void test() throws TaskExecutionException {
         HBaseMonitor monitor = new HBaseMonitor();

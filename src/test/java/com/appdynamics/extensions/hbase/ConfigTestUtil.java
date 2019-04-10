@@ -36,6 +36,7 @@ public class ConfigTestUtil {
         return configuration;
     }
 
+    // todo removed unused method
     public static List<MbeanObjectConfig> collectAllMasterMbeans(Stats stats){
         List<MbeanObjectConfig> mbeanObjectConfigs = Lists.newArrayList();
         List<MbeanObjectConfig> commonMBeansObject = stats.getMatchingMbeanConfig("common");
@@ -46,6 +47,7 @@ public class ConfigTestUtil {
         return mbeanObjectConfigs;
     }
 
+    // todo removed unused method
     public static List<MbeanObjectConfig> collectAllRegionMbeans(Stats stats){
         List<MbeanObjectConfig> mbeanObjectConfigs = Lists.newArrayList();
         List<MbeanObjectConfig> commonMBeansObject = stats.getMatchingMbeanConfig("common");

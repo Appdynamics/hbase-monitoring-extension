@@ -7,7 +7,7 @@
  */
 
 package com.appdynamics.extensions.hbase.Util;
-
+// todo: minor edit but you may wanna change the class name to constants
 public class Constant {
     public static String ENCRYPTION_KEY;
     public static String METRIC_SEPARATOR;

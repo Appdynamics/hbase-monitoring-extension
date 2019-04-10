@@ -76,6 +76,7 @@ public class HBaseMonitor extends ABaseMonitor {
         monitorContextConfiguration.setMetricXml(args.get("metric-file"), Stats.class);
     }
 
+    //TODO Remove main method after testing
     public static void main(String[] args) {
 
         ConsoleAppender ca = new ConsoleAppender();
