@@ -15,7 +15,7 @@ import com.appdynamics.extensions.conf.MonitorContextConfiguration;
 import com.appdynamics.extensions.conf.modules.MonitorExecutorServiceModule;
 import com.appdynamics.extensions.executorservice.MonitorExecutorService;
 import com.appdynamics.extensions.hbase.Config.Stats;
-import com.appdynamics.extensions.hbase.Util.Constant;
+import com.appdynamics.extensions.hbase.Util.Constants;
 import com.appdynamics.extensions.metrics.Metric;
 import org.junit.Assert;
 import org.junit.Before;
@@ -70,7 +70,7 @@ public class HBaseMonitorTaskTest {
         MonitorExecutorService executorService = executorServiceModule.getExecutorService();
         List<Map<String, String>> instances = (List<Map<String, String>>) config.get("servers");
         server = instances.get(0);
-        configMBeans = (Map<String, List<Map>>) config.get(Constant.MBEANS);
+        configMBeans = (Map<String, List<Map>>) config.get(Constants.MBEANS);
 
         Mockito.when(serviceProvider.getMetricWriteHelper()).thenReturn(metricWriter);
         Mockito.when(monitorConfiguration.getConfigYml()).thenReturn(config);
@@ -85,7 +85,7 @@ public class HBaseMonitorTaskTest {
         HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(monitorConfiguration, metricWriter, server);
         HBaseMonitorTask task = PowerMockito.spy(hBaseMonitorTask);
         List<Metric> metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/metrics.txt");
-        PowerMockito.doReturn(metrics).when(task,"collectTaskMetrics");
+        PowerMockito.doReturn(metrics).when(task,"processServer",null, null, null);
 
         task.run();
 
@@ -103,7 +103,7 @@ public class HBaseMonitorTaskTest {
         HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(monitorConfiguration, metricWriter, masterServer);
         HBaseMonitorTask task = PowerMockito.spy(hBaseMonitorTask);
         List<Metric> metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/masterMetrics.txt");
-        PowerMockito.doReturn(metrics).when(task,"collectTaskMetrics");
+        PowerMockito.doReturn(metrics).when(task,"processServer",null, null, null);
 
         task.run();
 
@@ -121,7 +121,7 @@ public class HBaseMonitorTaskTest {
         HBaseMonitorTask hBaseMonitorTask = new HBaseMonitorTask(monitorConfiguration, metricWriter, regionServer);
         HBaseMonitorTask task = PowerMockito.spy(hBaseMonitorTask);
         List<Metric> metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/rsMetrics.txt");
-        PowerMockito.doReturn(metrics).when(task,"collectTaskMetrics");
+        PowerMockito.doReturn(metrics).when(task,"processServer",null, null, null);
 
         task.run();
 

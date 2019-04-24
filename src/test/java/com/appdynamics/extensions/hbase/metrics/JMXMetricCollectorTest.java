@@ -11,6 +11,7 @@ package com.appdynamics.extensions.hbase.metrics;
 import com.appdynamics.extensions.conf.MonitorContextConfiguration;
 import com.appdynamics.extensions.hbase.Config.Stats;
 import com.appdynamics.extensions.hbase.ConfigTestUtil;
+import com.appdynamics.extensions.hbase.collector.JMXMetricCollector;
 import com.appdynamics.extensions.metrics.Metric;
 import org.junit.Assert;
 import org.junit.Before;
@@ -28,8 +29,6 @@ import java.util.Map;
 @RunWith(PowerMockRunner.class)
 @PowerMockIgnore("javax.net.ssl.*")
 public class JMXMetricCollectorTest {
-    @Mock
-    MonitorContextConfiguration contextConfiguration;
 
     @Mock
     JMXMetricCollector jmxMetricCollector;
@@ -56,7 +55,7 @@ public class JMXMetricCollectorTest {
 
     @Test
     public void testJMXCollectorCallForRegionServer1() throws IOException {
-        List<Metric> rs1Metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/rsMetrics.txt").subList(0,11);
+        List<Metric> rs1Metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/rsMetrics.txt").subList(0, 11);
         when(jmxMetricCollector.call()).thenReturn(rs1Metrics);
         List<Metric> metrics = jmxMetricCollector.call();
         Assert.assertEquals(metrics.size(), 11);
@@ -64,7 +63,7 @@ public class JMXMetricCollectorTest {
 
     @Test
     public void testJMXCollectorCallForRegionServer2() throws IOException {
-        List<Metric> rs2Metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/rsMetrics.txt").subList(11,22);
+        List<Metric> rs2Metrics = ConfigTestUtil.readAllMetrics("src/test/resources/conf/rsMetrics.txt").subList(11, 22);
         when(jmxMetricCollector.call()).thenReturn(rs2Metrics);
         List<Metric> metrics = jmxMetricCollector.call();
         Assert.assertEquals(metrics.size(), 11);

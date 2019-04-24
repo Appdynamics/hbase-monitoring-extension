@@ -14,10 +14,10 @@ import com.appdynamics.extensions.MetricWriteHelper;
 import com.appdynamics.extensions.conf.MonitorContextConfiguration;
 import com.appdynamics.extensions.hbase.Config.MbeanObjectConfig;
 import com.appdynamics.extensions.hbase.Config.Stats;
-import com.appdynamics.extensions.hbase.Util.Constant;
-import static com.appdynamics.extensions.hbase.Util.Constant.METRIC_SEPARATOR;
+import com.appdynamics.extensions.hbase.Util.Constants;
+import static com.appdynamics.extensions.hbase.Util.Constants.METRIC_SEPARATOR;
 import com.appdynamics.extensions.hbase.Util.MbeanUtil;
-import com.appdynamics.extensions.hbase.metrics.JMXMetricCollector;
+import com.appdynamics.extensions.hbase.collector.JMXMetricCollector;
 import com.appdynamics.extensions.logging.ExtensionsLoggerFactory;
 import com.appdynamics.extensions.metrics.Metric;
 import com.google.common.collect.Lists;
@@ -46,7 +46,6 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
     /* config mbeans from config.yml. */
     private Stats stats;
 
-    private List<FutureTask<List<Metric>>> futureTaskList = Lists.newArrayList();
     private BigInteger heartBeatValue = BigInteger.ZERO;
 
     HBaseMonitorTask(MonitorContextConfiguration monitorContextConfiguration, MetricWriteHelper metricWriteHelper, Map<String, ?> server) {
@@ -56,43 +55,13 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
         stats = (Stats) configuration.getMetricsXml();
     }
 
-    // todo: refactor this method
-    // todo: collect everything from master, then the server, then its region server and then move to the next server
-    // todo: each region server will create its own thread, so we want to be cautious of spawning new threads, refactoring needed
     public void run() {
-        displayName = (String) server.get(Constant.DISPLAY_NAME);
+        displayName = (String) server.get(Constants.DISPLAY_NAME);
         String metricPrefix = configuration.getMetricPrefix();
         long startTime = System.currentTimeMillis();
         List<Metric> metrics = Lists.newArrayList();
         try {
-            List<MbeanObjectConfig> masterAllMbeans = Lists.newArrayList();
-            List<MbeanObjectConfig> commonMBeansObject = stats.getMatchingMbeanConfig("common");
-            MbeanUtil.addAllValidMbeans(masterAllMbeans, commonMBeansObject);
-//            Picking zookeeper metrics for master only
-            MbeanUtil.addAllValidMbeans(masterAllMbeans, stats.getMatchingMbeanConfig("zooKeeperService"));
-            MbeanUtil.addAllValidMbeans(masterAllMbeans, stats.getMatchingMbeanConfig("master"));
-
-            String masterMetricPrefix = metricPrefix + METRIC_SEPARATOR + displayName + "|Master|";
-            initJMXCollector(server, masterAllMbeans, masterMetricPrefix);
-
-            List<Map<String, ?>> regionServers = (List<Map<String, ?>>) server.get(Constant.REGIONSERVERS);
-            if (regionServers == null || regionServers.size() == 0) {
-                logger.info("No region servers defined, not collecting region server metrics");
-            } else {
-                List<MbeanObjectConfig> regionServerAllMbeans = Lists.newArrayList();
-                MbeanUtil.addAllValidMbeans(regionServerAllMbeans, commonMBeansObject);
-                MbeanUtil.addAllValidMbeans(regionServerAllMbeans, stats.getMatchingMbeanConfig(Constant.REGIONSERVERS));
-                String regionServerMetricPrefix = metricPrefix + METRIC_SEPARATOR + displayName + "|RegionServer|";
-                for (Map<String, ?> regionServer : regionServers) {
-                    logger.info("Starting the Hbase Monitoring Task for region server : " + regionServer.get(Constant.DISPLAY_NAME));
-                    initJMXCollector(regionServer, regionServerAllMbeans, regionServerMetricPrefix + regionServer.get(Constant.DISPLAY_NAME) + METRIC_SEPARATOR);
-                }
-            }
-
-            metrics = collectTaskMetrics();
-            if (metrics.size() > 0)
-                heartBeatValue = BigInteger.ONE;
-            logger.info("HBase monitor JMX collector thread for server {} successfully completed.", displayName);
+            processTask(metrics, metricPrefix);
         } catch (Exception e) {
             logger.error("Error in HBase Monitor thread for server {}", displayName, e);
         } finally {
@@ -103,28 +72,51 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
         }
     }
 
-    private void initJMXCollector(Map<String, ?> server, List<MbeanObjectConfig> mbeans, String metricPrefix) {
+    private void processTask(List<Metric> metrics, String metricPrefix) {
+        List<MbeanObjectConfig> masterMbeans = MbeanUtil.collectAllMasterMbeans(stats);
+
+        String masterMetricPrefix = metricPrefix + METRIC_SEPARATOR + displayName + "|Master|";
+        metrics.addAll(processServer(server, masterMbeans, masterMetricPrefix));
+        List<Map<String, ?>> regionServers = (List<Map<String, ?>>) server.get(Constants.REGIONSERVERS);
+        if (regionServers == null || regionServers.size() == 0) {
+            logger.info("No region servers defined, not collecting region server metrics");
+        } else {
+            List<MbeanObjectConfig> regionServerMbeans = MbeanUtil.collectAllRegionMbeans(stats);
+            String regionServerMetricPrefix = metricPrefix + METRIC_SEPARATOR + displayName + "|RegionServer|";
+            for (Map<String, ?> regionServer : regionServers) {
+                logger.info("Starting the Hbase Monitoring Task for region server : " + regionServer.get(Constants.DISPLAY_NAME));
+                metrics.addAll(processServer(regionServer, regionServerMbeans, regionServerMetricPrefix + regionServer.get(Constants.DISPLAY_NAME) + METRIC_SEPARATOR));
+            }
+        }
+        if (metrics.size() > 0)
+            heartBeatValue = BigInteger.ONE;
+        logger.info("HBase monitor JMX collector thread for server {} successfully completed.", displayName);
+    }
+
+    private List<Metric> processServer(Map<String, ?> server, List<MbeanObjectConfig> mbeans, String metricPrefix) {
+        FutureTask<List<Metric>> task = initJMXCollector(server, mbeans, metricPrefix);
+        return collectTaskMetrics(task);
+    }
+
+    private FutureTask<List<Metric>> initJMXCollector(Map<String, ?> server, List<MbeanObjectConfig> mbeans, String metricPrefix) {
         JMXMetricCollector serverJmxCollector = new JMXMetricCollector(server, mbeans, metricPrefix, configuration);
         FutureTask<List<Metric>> taskExecutor = new FutureTask<>(serverJmxCollector);
         configuration.getContext().getExecutorService().submit(server + " metric collection Task", taskExecutor);
-        futureTaskList.add(taskExecutor);
-        logger.debug("Added future task for {}", server.get(Constant.DISPLAY_NAME));
+        logger.debug("Added future task for {}", server.get(Constants.DISPLAY_NAME));
+        return taskExecutor;
     }
-    //todo: need to have some clarity on how many threads are being generated and if we can limit to one thread per main server instead of having each thread for every region server as well, but that would also include a discussion on how if we have a thread for each region server will impact the extension and the machine its running on.
-    private List<Metric> collectTaskMetrics() {
-        List<Metric> metrics = Lists.newArrayList();
-        for (FutureTask task : futureTaskList) {
-            try {
-                List<Metric> taskMetrics = (List<Metric>) task.get();
-                metrics.addAll(taskMetrics);
-            } catch (InterruptedException var6) {
-                logger.error("Task interrupted. ", var6);
-            } catch (ExecutionException var7) {
-                logger.error("Task execution failed. ", var7);
-            } catch (Exception e) {
-                logger.error("Exception in future task. ", e);
-            }
 
+    private List<Metric> collectTaskMetrics(FutureTask<List<Metric>> futureTask) {
+        List<Metric> metrics = Lists.newArrayList();
+        try {
+            List<Metric> taskMetrics = futureTask.get();
+            metrics.addAll(taskMetrics);
+        } catch (InterruptedException var6) {
+            logger.error("Task interrupted. ", var6);
+        } catch (ExecutionException var7) {
+            logger.error("Task execution failed. ", var7);
+        } catch (Exception e) {
+            logger.error("Exception in future task. ", e);
         }
         return metrics;
     }

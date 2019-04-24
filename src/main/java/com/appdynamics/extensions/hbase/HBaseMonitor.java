@@ -13,18 +13,13 @@ import com.appdynamics.extensions.ABaseMonitor;
 import com.appdynamics.extensions.TasksExecutionServiceProvider;
 import com.appdynamics.extensions.conf.MonitorContextConfiguration;
 import com.appdynamics.extensions.hbase.Config.Stats;
-import static com.appdynamics.extensions.hbase.Util.Constant.DISPLAY_NAME;
-import static com.appdynamics.extensions.hbase.Util.Constant.METRIC_PREFIX;
-import static com.appdynamics.extensions.hbase.Util.Constant.MonitorName;
+import static com.appdynamics.extensions.hbase.Util.Constants.DISPLAY_NAME;
+import static com.appdynamics.extensions.hbase.Util.Constants.METRIC_PREFIX;
+import static com.appdynamics.extensions.hbase.Util.Constants.MonitorName;
 import com.appdynamics.extensions.logging.ExtensionsLoggerFactory;
 import com.appdynamics.extensions.util.AssertUtils;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 
-import java.io.OutputStreamWriter;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -76,25 +71,24 @@ public class HBaseMonitor extends ABaseMonitor {
         monitorContextConfiguration.setMetricXml(args.get("metric-file"), Stats.class);
     }
 
-    //TODO Remove main method after testing
-    public static void main(String[] args) {
-
-        ConsoleAppender ca = new ConsoleAppender();
-        ca.setWriter(new OutputStreamWriter(System.out));
-        ca.setLayout(new PatternLayout("%-5p [%t]: %m%n"));
-        ca.setThreshold(Level.DEBUG);
-
-        org.apache.log4j.Logger.getRootLogger().addAppender(ca);
-
-        final Map<String, String> taskArgs = new HashMap<>();
-        taskArgs.put("config-file", "src/main/resources/conf/config.yml");
-        taskArgs.put("metric-file", "src/main/resources/conf/metrics.xml");
-        try {
-            final HBaseMonitor monitor = new HBaseMonitor();
-            monitor.execute(taskArgs, null);
-        } catch (Exception e) {
-            logger.error("Error while running the task", e);
-        }
-    }
+//    public static void main(String[] args) {
+//
+//        ConsoleAppender ca = new ConsoleAppender();
+//        ca.setWriter(new OutputStreamWriter(System.out));
+//        ca.setLayout(new PatternLayout("%-5p [%t]: %m%n"));
+//        ca.setThreshold(Level.DEBUG);
+//
+//        org.apache.log4j.Logger.getRootLogger().addAppender(ca);
+//
+//        final Map<String, String> taskArgs = new HashMap<>();
+//        taskArgs.put("config-file", "src/main/resources/conf/config.yml");
+//        taskArgs.put("metric-file", "src/main/resources/conf/metrics.xml");
+//        try {
+//            final HBaseMonitor monitor = new HBaseMonitor();
+//            monitor.execute(taskArgs, null);
+//        } catch (Exception e) {
+//            logger.error("Error while running the task", e);
+//        }
+//    }
 
 }

@@ -51,10 +51,6 @@ public class JMXConnectionAdapter {
 
 
     public static JMXConnectionAdapter create(String serviceUrl, String host, int port, String username, String password) throws MalformedURLException {
-        // todo: you do check if port is -1 or and host is not null,
-        // should you also check if host is there but no port needed?
-        // or if that is not the case then this is good.
-
         if (Strings.isNullOrEmpty(serviceUrl) && !Strings.isNullOrEmpty(host) && port != -1) {
             return new JMXConnectionAdapter(host, port, username, password);
         } else if (!Strings.isNullOrEmpty(serviceUrl)) {
