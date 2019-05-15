@@ -8,3 +8,4 @@
 "Custom Metrics|HBase|Local HBase|Master|Local HBase|Server|clusterRequests","68"
 "Custom Metrics|HBase|Local HBase|Master|Local HBase|Server|averageLoad","3.0"
 "Custom Metrics|HBase|Local HBase|Master|Local HBase|Server|numRegionServers","1"
+"Custom Metrics|HBase|HeartBeat","1"

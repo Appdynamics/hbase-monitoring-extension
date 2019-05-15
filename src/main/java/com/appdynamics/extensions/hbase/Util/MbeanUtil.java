@@ -29,6 +29,8 @@ public class MbeanUtil {
 //            Picking zookeeper metrics for master only
         MbeanUtil.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("zooKeeperService"));
         MbeanUtil.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("master"));
+        //Adding composite memory metrics for master only
+        MbeanUtil.addAllValidMbeans(mbeanObjectConfigs, stats.getMatchingMbeanConfig("memory"));
         return mbeanObjectConfigs;
     }
 

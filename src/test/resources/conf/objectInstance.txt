@@ -1,0 +1,2 @@
+"Custom Metrics|HBase|Local HBase|Master|JvmMetrics|MemHeapCommittedM","247.5"
+"Custom Metrics|HBase|Local HBase|Master|JvmMetrics|MemHeapMaxM","4029.5"

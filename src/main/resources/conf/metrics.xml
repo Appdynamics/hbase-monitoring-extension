@@ -77,4 +77,12 @@ Set delta = true for metric to report per-min data
         </mbeanObject>
     </mbeans>
 
+    <mbeans name="memory">
+        <mbeanObject objectName="java.lang:type=Memory">
+            <metric attr="HeapMemoryUsage.committed" alias="Heap Memory Usage|Committed" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+            <metric attr="HeapMemoryUsage.used" alias="Heap Memory Usage|Used" aggregationType="AVERAGE" timeRollUpType="AVERAGE"
+                    clusterRollUpType="COLLECTIVE"/>
+        </mbeanObject>
+    </mbeans>
 </stats>

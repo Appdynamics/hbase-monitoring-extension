@@ -26,6 +26,7 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,9 +42,11 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
     private Map<String, ?> server;
     private List<MbeanObjectConfig> mbeans;
     private String metricPrefix;
+    private String serverDisplayName;
     private MonitorContextConfiguration configuration;
+    private JMXConnectionAdapter jmxConnectionAdapter;
 
-    public JMXMetricCollector(Map<String, ?> server, List<MbeanObjectConfig> mbeans, String metricPrefix, MonitorContextConfiguration configuration) {
+    public JMXMetricCollector(Map<String, ?> server, List<MbeanObjectConfig> mbeans, MonitorContextConfiguration configuration, String metricPrefix) {
         this.server = server;
         this.mbeans = mbeans;
         this.metricPrefix = metricPrefix;
@@ -52,52 +55,47 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
 
 
     public List<Metric> call() {
-        List<Metric> collectedMetrics = Lists.newArrayList();
-        JMXConnectionAdapter jmxAdapter = null;
-        JMXConnector jmxConnector = null;
-        String serverDisplayName = (String)server.get(Constants.DISPLAY_NAME);
-
+        serverDisplayName = (String) server.get(Constants.DISPLAY_NAME);
         try {
+            initJMXConnectionAdapter();
+        } catch (Exception e) {
+            logger.error("Malformed Error while creating Jmx connection Adapter {}", serverDisplayName, e);
+            return Collections.emptyList();
+        }
+        return populateJMXStats();
+    }
+
+    private List<Metric> populateJMXStats() {
+        List<Metric> collectedMetrics = Lists.newArrayList();
+        JMXConnector jmxConnector = null;
+        if (jmxConnectionAdapter != null) {
             try {
-                jmxAdapter = getJMXConnectionAdapter(server);
-            } catch (NumberFormatException e) {
-                logger.error("Number format exception while creating JMX connection to server {}", serverDisplayName, e);
+                jmxConnector = jmxConnectionAdapter.open();
+            } catch (Exception e) {
+                logger.error("Error opening JMX connection to server {}", serverDisplayName, e);
                 return collectedMetrics;
             }
-
-            if (jmxAdapter != null) {
-                try {
-                    jmxConnector = jmxAdapter.open();
-                } catch (Exception e) {
-                    logger.error("Error opening JMX connection to server {}", serverDisplayName, e);
-                    return collectedMetrics;
-                }
-            }
-
-            try {
-                if (jmxConnector != null) {
-                    for (MbeanObjectConfig aConfigMBeanObject : mbeans) {
-                        String configObjectName = aConfigMBeanObject.getObjectName(OBJECT_NAME);
-                        logger.debug("Processing mbean {} from the config file", configObjectName);
-                        try {
-                            Set<ObjectInstance> objectInstances = jmxAdapter.queryMBeans(jmxConnector, ObjectName.getInstance(configObjectName));
-                            collectedMetrics.addAll(collectJMXattributeMetrics(objectInstances, jmxAdapter, jmxConnector, aConfigMBeanObject));
-                        } catch (JMException jmxe) {
-                            logger.error("Error thrown while reading JMX Instance attributes for {}", configObjectName, jmxe);
-                        } catch (IOException ioe) {
-                            logger.error("I/O exception while reading JMX Instance attributes for {}", configObjectName, ioe);
-                        }
+        }
+        try {
+            if (jmxConnector != null) {
+                for (MbeanObjectConfig aConfigMBeanObject : mbeans) {
+                    String configObjectName = aConfigMBeanObject.getObjectName(OBJECT_NAME);
+                    logger.debug("Processing mbean {} from the config file", configObjectName);
+                    try {
+                        Set<ObjectInstance> objectInstances = jmxConnectionAdapter.queryMBeans(jmxConnector, ObjectName.getInstance(configObjectName));
+                        collectedMetrics.addAll(collectJMXattributeMetrics(objectInstances, jmxConnectionAdapter, jmxConnector, aConfigMBeanObject));
+                    } catch (Exception ioe) {
+                        logger.error("exception while reading JMX Instance attributes for {}", configObjectName, ioe);
                     }
-                    logger.debug("Successfully completed JMX mbeans metrics for {}", serverDisplayName);
                 }
-            } catch (Exception e) {
-                logger.error("Error while collecting metrics from {}", serverDisplayName, e);
+                logger.debug("Successfully completed All JMX mbeans metrics for {}", serverDisplayName);
             }
-
+        } catch (Exception e) {
+            logger.error("Error while collecting metrics from {}", serverDisplayName, e);
         } finally {
-            if (jmxAdapter != null) {
+            if (jmxConnectionAdapter != null) {
                 try {
-                    jmxAdapter.close(jmxConnector);
+                    jmxConnectionAdapter.close(jmxConnector);
                 } catch (Exception e) {
                     logger.error("Failed to close the JMX connection for server {}", serverDisplayName);
                 }
@@ -108,7 +106,6 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
 
     private List<Metric> collectJMXattributeMetrics(Set<ObjectInstance> objectInstances, JMXConnectionAdapter jmxAdapter, JMXConnector jmxConnector, MbeanObjectConfig aConfigMBeanObject) throws JMException, IOException {
         List<Metric> collectedMetrics = Lists.newArrayList();
-
         for (ObjectInstance instance : objectInstances) {
             InstanceProcessor instanceProcessor = new InstanceProcessor(jmxAdapter, jmxConnector, aConfigMBeanObject, metricPrefix);
             collectedMetrics.addAll(instanceProcessor.processInstance(instance));
@@ -117,28 +114,16 @@ public class JMXMetricCollector implements Callable<List<Metric>> {
     }
 
 
-    private JMXConnectionAdapter getJMXConnectionAdapter(Map configMap) throws NumberFormatException {
-
-        String serviceUrl = (String)configMap.get(Constants.SERVICE_URL);
-        String host = (String)configMap.get(Constants.HOST);
-
-        if (Strings.isNullOrEmpty(serviceUrl) && Strings.isNullOrEmpty(host)) {
+    private void initJMXConnectionAdapter() throws Exception {
+        String serviceUrl = (String) server.get(Constants.SERVICE_URL);
+        String host = (String) server.get(Constants.HOST);
+        if (Strings.isNullOrEmpty(serviceUrl) && Strings.isNullOrEmpty(host))
             logger.info("JMX details not provided, not creating connection");
-            return null;
-        }
-
-        String portStr = (String)configMap.get(Constants.PORT);
+        String portStr = server.get(Constants.PORT).toString();
         int port = portStr != null ? Integer.parseInt(portStr) : -1;
-        String username = (String)configMap.get(Constants.USERNAME);
-        String password = getPassword(configMap);
-
-        try {
-            JMXConnectionAdapter jmxConnectionAdapter = JMXConnectionAdapter.create(serviceUrl, host, port, username, password);
-            return jmxConnectionAdapter;
-        } catch (Exception e) {
-            logger.error("Error while connecting to JMX interface", e);
-            return null;
-        }
+        String username = (String) server.get(Constants.USERNAME);
+        String password = getPassword(server);
+        jmxConnectionAdapter = JMXConnectionAdapter.create(serviceUrl, host, port, username, password);
     }
 
 

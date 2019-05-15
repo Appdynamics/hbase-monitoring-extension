@@ -99,10 +99,9 @@ class HBaseMonitorTask implements AMonitorTaskRunnable {
     }
 
     private FutureTask<List<Metric>> initJMXCollector(Map<String, ?> server, List<MbeanObjectConfig> mbeans, String metricPrefix) {
-        JMXMetricCollector serverJmxCollector = new JMXMetricCollector(server, mbeans, metricPrefix, configuration);
+        JMXMetricCollector serverJmxCollector = new JMXMetricCollector(server, mbeans,configuration, metricPrefix);
         FutureTask<List<Metric>> taskExecutor = new FutureTask<>(serverJmxCollector);
         configuration.getContext().getExecutorService().submit(server + " metric collection Task", taskExecutor);
-        logger.debug("Added future task for {}", server.get(Constants.DISPLAY_NAME));
         return taskExecutor;
     }
 

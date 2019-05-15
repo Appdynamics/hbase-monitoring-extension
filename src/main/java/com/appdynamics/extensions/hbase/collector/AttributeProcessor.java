@@ -6,14 +6,18 @@ package com.appdynamics.extensions.hbase.collector;/*
  */
 
 import com.appdynamics.extensions.hbase.Config.MetricConfig;
-import com.appdynamics.extensions.hbase.Config.MetricConverter;
+import static com.appdynamics.extensions.hbase.Util.Constants.PERIOD;
 import com.appdynamics.extensions.logging.ExtensionsLoggerFactory;
 import com.appdynamics.extensions.metrics.Metric;
+import com.google.common.collect.Lists;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 
 import javax.management.Attribute;
+import javax.management.openmbean.CompositeData;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AttributeProcessor {
 
@@ -25,14 +29,7 @@ public class AttributeProcessor {
         try {
             String attrName = attr.getName();
             Object value = attr.getValue();
-            if (value != null) {
-                MetricConfig config = mbeanMetricsWithConfig.get(attrName);
-                if (config.getMetricConverter() != null)
-                    value = getConvertedStatus(config.getMetricConverter(), String.valueOf(value));
-                metric = new Metric(attrName, String.valueOf(value), metricPath + attrName, objectMapper.convertValue(config, Map.class));
-            } else {
-                logger.warn("Ignoring metric {} with path {} as the value is null", attrName, metricPath);
-            }
+            metric = collectAttributeMetric(attrName, value, mbeanMetricsWithConfig, metricPath);
         } catch (Exception e) {
             logger.error("Error collecting value for {} ", attr.getName(), e);
         } finally {
@@ -40,16 +37,28 @@ public class AttributeProcessor {
         }
     }
 
-    /**
-     * @param converters
-     * @param status
-     * @return
-     */
-    private String getConvertedStatus(MetricConverter[] converters, String status) {
-        for (MetricConverter converter : converters) {
-            if (converter.getLabel().equals(status))
-                return converter.getValue();
+    private Metric collectAttributeMetric(String attrName, Object value, Map<String, MetricConfig> mbeanMetricsWithConfig,  String metricPath ){
+        if (value != null) {
+            MetricConfig config = mbeanMetricsWithConfig.get(attrName);
+            return new Metric(attrName, String.valueOf(value), metricPath + attrName, objectMapper.convertValue(config, Map.class));
+        } else {
+            logger.warn("Ignoring metric {} with path {} as the value is null", attrName, metricPath);
         }
-        return "";
+        return null;
+    }
+    public List<Metric> processCompositeAttriubteToMetric(Attribute attr, Map<String, MetricConfig> mbeanMetricsConfig, String metricPath){
+        List<Metric> metrics = Lists.newArrayList();
+        String attributeName = attr.getName();
+        CompositeData metricValue = (CompositeData) attr.getValue();
+        Set<String> attributesFound = metricValue.getCompositeType().keySet();
+        for (String str : attributesFound) {
+            String key = attributeName + PERIOD + str;
+            if (mbeanMetricsConfig.containsKey(key)) {
+                Object attributeValue = metricValue.get(str);
+//                // Value of a composite type has to be a base metric, can not be a list, map
+                metrics.add(collectAttributeMetric(key, attributeValue, mbeanMetricsConfig, metricPath));
+            }
+        }
+        return metrics;
     }
 }

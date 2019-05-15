@@ -49,7 +49,7 @@ public class JMXMetricCollectorTest {
         List<Metric> masterMetric = ConfigTestUtil.readAllMetrics("src/test/resources/conf/masterMetrics.txt");
         when(jmxMetricCollector.call()).thenReturn(masterMetric);
         List<Metric> metrics = jmxMetricCollector.call();
-        Assert.assertEquals(metrics.size(), 10);
+        Assert.assertEquals(metrics.size(), 11);
 
     }
 

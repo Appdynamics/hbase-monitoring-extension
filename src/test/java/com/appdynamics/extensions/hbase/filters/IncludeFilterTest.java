@@ -24,7 +24,7 @@ public class IncludeFilterTest {
         Set dictionary = DictionaryGenerator.createIncludeDictionaryWithDefaults();
         List<String> metrics = Lists.newArrayList("MemHeapCommittedM", "storeCount", "storeFileCount");
         IncludeFilter filter = new IncludeFilter(dictionary);
-        List<String> filteredResult =  filter.apply(metrics);
+        Set<String> filteredResult =  filter.apply(metrics);
         Assert.assertTrue(filteredResult.contains("storeCount"));
         Assert.assertTrue(filteredResult.contains("storeFileCount"));
         Assert.assertTrue(!filteredResult.contains("MemHeapCommittedM"));
@@ -34,7 +34,7 @@ public class IncludeFilterTest {
     public void whenNullDictionary_thenReturnUnchangedSet() {
         List<String> metrics = Lists.newArrayList("MemHeapCommittedM", "storeCount");
         IncludeFilter filter = new IncludeFilter(null);
-        List<String> filteredResult = filter.apply( metrics);
+        Set<String> filteredResult = filter.apply( metrics);
         Assert.assertTrue(filteredResult.size() == 0);
     }
 
@@ -44,7 +44,7 @@ public class IncludeFilterTest {
         dictionary.add("storeCount");
         List<String> metrics = Lists.newArrayList("MemHeapCommittedM", "storeCount");
         IncludeFilter filter = new IncludeFilter(dictionary);
-        List<String> filteredResult = filter.apply(metrics);
+        Set<String> filteredResult = filter.apply(metrics);
         Assert.assertTrue(filteredResult.size() == 1);
     }
 }

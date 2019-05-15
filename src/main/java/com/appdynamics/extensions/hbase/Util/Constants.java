@@ -22,6 +22,7 @@ public class Constants {
     public static final String REGIONSERVERS;
     public static final String NAME;
     public static final String SUBTYPE;
+    public static final String PERIOD;
 
     static {
         METRIC_PREFIX = "Custom Metrics|HBase|";
@@ -38,5 +39,6 @@ public class Constants {
         REGIONSERVERS = "regionServers";
         NAME = "name";
         SUBTYPE = "sub";
+        PERIOD = ".";
     }
 }

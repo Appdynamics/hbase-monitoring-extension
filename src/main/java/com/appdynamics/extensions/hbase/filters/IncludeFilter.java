@@ -9,9 +9,10 @@
 package com.appdynamics.extensions.hbase.filters;
 
 
-import com.google.common.collect.Lists;
+import com.appdynamics.extensions.hbase.Util.CommonUtil;
+import com.google.common.collect.Sets;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -23,13 +24,16 @@ public class IncludeFilter {
         this.metricKeys = metricKeys;
     }
 
-    public List<String> apply(List<String> allMetrics) {
-        List<String> filteredSet = new ArrayList<>();
+    public Set<String> apply(List<String> allMetrics) {
+        Set<String> filteredSet = Sets.newHashSet();
         if (allMetrics == null || metricKeys == null) {
-            return Lists.newArrayList();
+            return Collections.emptySet();
         }
-        for (String metric : allMetrics) {
-            if (metricKeys.contains(metric)) {
+        for (String metric : metricKeys) {
+            if (CommonUtil.isCompositeObject(metric)) {
+                metric = CommonUtil.getMetricNameFromCompositeObject(metric);
+            }
+            if (allMetrics.contains(metric)) {
                 filteredSet.add(metric);
             }
         }

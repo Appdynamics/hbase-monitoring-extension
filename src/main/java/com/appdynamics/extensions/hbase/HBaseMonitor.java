@@ -46,7 +46,7 @@ public class HBaseMonitor extends ABaseMonitor {
             for (Map<String, ?> server : servers) {
                 AssertUtils.assertNotNull(server, "the server arguments are empty");
                 AssertUtils.assertNotNull(server.get(DISPLAY_NAME), DISPLAY_NAME + " can not be null in the config.yml");
-                logger.info("Starting the Hbase Monitoring Task for server : " + server.get("displayName"));
+                logger.info("Starting the Hbase Monitoring Task for server : " + server.get(DISPLAY_NAME));
                 HBaseMonitorTask task = new HBaseMonitorTask(monitorContextConfiguration, serviceProvider.getMetricWriteHelper(), server);
                 serviceProvider.submit((String) server.get(DISPLAY_NAME), task);
             }

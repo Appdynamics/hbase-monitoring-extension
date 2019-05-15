@@ -20,3 +20,4 @@
 "Custom Metrics|HBase|Local HBase|RegionServer|RegionServer2|WAL|AppendSize_min","105"
 "Custom Metrics|HBase|Local HBase|RegionServer|RegionServer2|WAL|AppendSize_num_ops","7"
 "Custom Metrics|HBase|Local HBase|RegionServer|RegionServer2|WAL|AppendSize_max","487"
+"Custom Metrics|HBase|HeartBeat","1"

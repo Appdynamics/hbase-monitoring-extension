@@ -7,17 +7,20 @@ HBase is an open-source, non-relational, distributed database. The monitoring ex
 
 ## Prerequisites
 
+Before the extension is installed, the prerequisites mentioned [here](https://community.appdynamics.com/t5/Knowledge-Base/Extensions-Prerequisites-Guide/ta-p/35213) need to be met. Please do not proceed with the extension installation if the specified prerequisites are not met.
+
 The HBase Server must [enable JMX metrics](http://hbase.apache.org/metrics.html) or [setup JMX remote access](http://hbase.apache.org/metrics.html#Setup_JMX_remote_access). Once the configuration is done, you should be able to run JConsole (included with the JDK since JDK 5.0) to view the statistics via JMX .
 To know more about JMX, please follow the [link]( http://docs.oracle.com/javase/6/docs/technotes/guides/management/agent.html).
 
  In order to use this extension, you do need a [Standalone JAVA Machine Agent](https://docs.appdynamics.com/display/PRO44/Standalone+Machine+Agents) or [SIM Agent](https://docs.appdynamics.com/display/PRO44/Server+Visibility).  For more details on downloading these products, please  visit [here](https://download.appdynamics.com/).
-The extension needs to be able to connect to the HAProxy in order to collect and send metrics. To do this, you will have to either establish a remote connection in between the extension and the product, or have an agent on the same machine running the product in order for the extension to collect and send the metrics.
+The extension needs to be able to connect to the Hbase in order to collect and send metrics. To do this, you will have to either establish a remote connection in between the extension and the product, or have an agent on the same machine running the product in order for the extension to collect and send the metrics.
 
 ## Installation
-    1. Download and unzip the HBaseMonitor-3.1.2.zip to the "<MachineAgent_Dir>/monitors" directory.
-    2. Edit the file config.yml as described below in Configuration Section, located in <MachineAgent_Dir>/monitors/HBaseMonitor and update the server(s) details.
-    3. All metrics to be reported are configured in metrics.xml. Users can remove entries from metrics.xml to stop the metric from reporting, or add new entries as well.
-    4. Restart the Machine Agent.
+
+1. Download and unzip the HBaseMonitor-4.0.0.zip to the "<MachineAgent_Dir>/monitors" directory.
+2. Edit the file config.yml located at <MachineAgent_Dir>/monitors/HBaseMonitor The metricPrefix of the extension has to be configured as specified [here](https://community.appdynamics.com/t5/Knowledge-Base/How-do-I-troubleshoot-missing-custom-metrics-or-extensions/ta-p/28695#Configuring%20an%20Extension). Please make sure that the right metricPrefix is chosen based on your machine agent deployment, otherwise this could lead to metrics not being visible in the controller.
+3. All metrics to be reported are configured in metrics.xml. Users can remove entries from metrics.xml to stop the metric from reporting, or add new entries as well.
+4. Restart the Machine Agent.
 
 Please place the extension in the **"monitors"** directory of your **Machine Agent** installation directory. Do not place the extension in the **"extensions"** directory of your **Machine Agent** installation directory.
 In the AppDynamics Metric Browser, look for **Application Infrastructure Performance|\<Tier\>|Custom Metrics|HBase** and you should be able to see all the metrics.
@@ -134,7 +137,8 @@ Workbench is an inbuilt feature provided with each extension in order to assist 
 ## Troubleshooting
 Before configuring the extension, please make sure to run the below steps to check if the set up is correct.
 
-1. Telnet into your HBaseMonitor server from the box where the extension is deployed.
+1. Please look at the [troubleshooting document](https://community.appdynamics.com/t5/Knowledge-Base/How-do-I-troubleshoot-missing-custom-metrics-or-extensions/ta-p/28695) and make sure that everything is followed correctly.
+2. Telnet into your HBaseMonitor server from the box where the extension is deployed.
        telnet <hostname> <port> or telnet serviceUrl
 
        <port> - It is the jmxremote.port specified.
@@ -142,9 +146,9 @@ Before configuring the extension, please make sure to run the below steps to che
 
     If telnet works, it confirm the access to the HBaseMonitor server.
 
-2. Start jconsole. Jconsole comes as a utility with installed jdk. After giving the correct host and port , check if HBase mbean shows up under `Hadoop`.
+3. Start jconsole. Jconsole comes as a utility with installed jdk. After giving the correct host and port , check if HBase mbean shows up under `Hadoop`.
 
-3. It is a good idea to match the mbean configuration in the config.yml against the jconsole. JMX is case sensitive so make
+4. It is a good idea to match the mbean configuration in the config.yml against the jconsole. JMX is case sensitive so make
 sure the config matches exact.
 
 Also, please follow the steps listed in this [troubleshooting-document](https://community.appdynamics.com/t5/Knowledge-Base/How-to-troubleshoot-missing-custom-metrics-or-extensions-metrics/ta-p/28695) in order to troubleshoot your issue. These are a set of common issues that customers might have faced during the installation of the extension. If these don't solve your issue, please follow the last step on the [troubleshooting-document](https://community.appdynamics.com/t5/Knowledge-Base/How-to-troubleshoot-missing-custom-metrics-or-extensions-metrics/ta-p/28695) to contact the support team.
@@ -172,8 +176,8 @@ Always feel free to fork and contribute any changes directly here on [GitHub](ht
 ## Version
 |          Name            |  Version   |
 |--------------------------|------------|
-|Extension Version         |3.1.2       |
+|Extension Version         |4.0.0       |
 |Controller Compatibility  |3.7 or Later|
 |Product Tested On         |1.2.6       |
-|Last Update               |10/12/2018  |
+|Last Update               |15/05/2019  |
 |Changes list              |[ChangeLog](https://github.com/Appdynamics/hbase-monitoring-extension/blob/master/CHANGELOG.md)|

@@ -90,7 +90,7 @@ public class HBaseMonitorTaskTest {
         task.run();
 
         verify(metricWriter).transformAndPrintMetrics(pathCaptor.capture());
-        Assert.assertEquals(((List<Metric>)pathCaptor.getValue()).size(), 33);
+        Assert.assertEquals(metrics.size(), 33);
         verify(metricWriter, times(1)).transformAndPrintMetrics(anyList());
     }
 
@@ -108,7 +108,7 @@ public class HBaseMonitorTaskTest {
         task.run();
 
         verify(metricWriter).transformAndPrintMetrics(pathCaptor.capture());
-        Assert.assertEquals(((List<Metric>)pathCaptor.getValue()).size(), 11);
+        Assert.assertEquals(metrics.size(), 11);
         verify(metricWriter, times(1)).transformAndPrintMetrics(anyList());
     }
 
@@ -126,7 +126,7 @@ public class HBaseMonitorTaskTest {
         task.run();
 
         verify(metricWriter).transformAndPrintMetrics(pathCaptor.capture());
-        Assert.assertEquals(((List<Metric>)pathCaptor.getValue()).size(), 23);
+        Assert.assertEquals(metrics.size(), 23);
         verify(metricWriter, times(1)).transformAndPrintMetrics(anyList());
     }
 }
