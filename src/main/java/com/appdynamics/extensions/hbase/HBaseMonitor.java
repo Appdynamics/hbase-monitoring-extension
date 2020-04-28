@@ -73,13 +73,6 @@ public class HBaseMonitor extends ABaseMonitor {
 
 //    public static void main(String[] args) {
 //
-//        ConsoleAppender ca = new ConsoleAppender();
-//        ca.setWriter(new OutputStreamWriter(System.out));
-//        ca.setLayout(new PatternLayout("%-5p [%t]: %m%n"));
-//        ca.setThreshold(Level.DEBUG);
-//
-//        org.apache.log4j.Logger.getRootLogger().addAppender(ca);
-//
 //        final Map<String, String> taskArgs = new HashMap<>();
 //        taskArgs.put("config-file", "src/main/resources/conf/config.yml");
 //        taskArgs.put("metric-file", "src/main/resources/conf/metrics.xml");

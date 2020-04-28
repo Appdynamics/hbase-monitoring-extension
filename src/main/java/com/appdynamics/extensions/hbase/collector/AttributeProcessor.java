@@ -9,8 +9,8 @@ import com.appdynamics.extensions.hbase.Config.MetricConfig;
 import static com.appdynamics.extensions.hbase.Util.Constants.PERIOD;
 import com.appdynamics.extensions.logging.ExtensionsLoggerFactory;
 import com.appdynamics.extensions.metrics.Metric;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 
 import javax.management.Attribute;

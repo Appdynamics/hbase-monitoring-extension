@@ -179,5 +179,5 @@ Always feel free to fork and contribute any changes directly here on [GitHub](ht
 |Extension Version         |4.0.0       |
 |Controller Compatibility  |3.7 or Later|
 |Product Tested On         |1.2.6       |
-|Last Update               |15/05/2019  |
+|Last Update               |28/04/2020  |
 |Changes list              |[ChangeLog](https://github.com/Appdynamics/hbase-monitoring-extension/blob/master/CHANGELOG.md)|

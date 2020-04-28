@@ -10,5 +10,5 @@
 
 ### Version 4.0.0
 
-* Revamped to appd-exts-commons 2.2.0
+* Revamped to appd-exts-commons 2.2.2
 * supports for composite lang memory metrics for Hbase

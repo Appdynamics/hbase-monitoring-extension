@@ -62,17 +62,17 @@ customDashboard:
   pathToNormalDashboard: "monitors/HBaseMonitor/CustomDashboard_Process.json"
 
 controllerInfo:
-  controllerHost: "controller"
-  controllerPort: 8090
+  controllerHost: "${APPDYNAMICS_CONTROLLER_HOST_NAME}"
+  controllerPort: 8080
   account: "customer1"
-  username: "admin"
-  password: "admin"
+  username: "user1"
+  password: "welcome"
   encryptedPassword: ""
   encryptionKey: ""
   controllerSslEnabled: false
   enableOrchestration: false
   uniqueHostId: ""
-  accountAccessKey: ""
+  accountAccessKey: "${APPDYNAMICS_AGENT_ACCOUNT_ACCESS_KEY}"
   machinePath: ""
   simEnabled: true
   applicationName: ""
