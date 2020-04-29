@@ -17,4 +17,4 @@ ENV PATH=$PATH:$HBASE_HOME/bin
 
 RUN sed -i '/^#.*10101/s/^#//;/^#.*10102/s/^#//;/^#.*authenticate=false/s/^#//'  hbase-2.2.4/conf/hbase-env.sh
 RUN chmod 777 hbase-2.2.4/bin/start-hbase.sh
-ENTRYPOINT ["start-hbase.sh"]
+RUN hbase-2.2.4/bin/start-hbase.sh
