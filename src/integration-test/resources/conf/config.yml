@@ -2,7 +2,7 @@
 #metricPrefix: Custom Metrics|HBase
 
 # If SIM is not enabled, then use this
-metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
+metricPrefix: Custom Metrics|HBase
 #To find the <COMPONENT_ID> in your environment,
 #please follow the screenshot https://docs.appdynamics.com/display/PRO42/Build+a+Monitoring+Extension+Using+Java
 

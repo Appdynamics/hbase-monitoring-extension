@@ -15,7 +15,7 @@
  *
  */
 
-package com.appdynamics.extensions.process;
+package com.appdynamics.extensions.hbase;
 
 import com.appdynamics.extensions.controller.apiservices.CustomDashboardAPIService;
 import com.appdynamics.extensions.controller.apiservices.MetricAPIService;

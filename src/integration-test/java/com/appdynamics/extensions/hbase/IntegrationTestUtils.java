@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  */
-package com.appdynamics.extensions.process;
+package com.appdynamics.extensions.hbase;
 
 
 import static com.appdynamics.extensions.Constants.ENCRYPTION_KEY;
