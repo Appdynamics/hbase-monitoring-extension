@@ -1,0 +1,80 @@
+# Use this only if SIM is enabled
+#metricPrefix: Custom Metrics|HBase
+
+# If SIM is not enabled, then use this
+metricPrefix: Server|Component:<COMPONENT_ID>|Custom Metrics|HBase
+#To find the <COMPONENT_ID> in your environment,
+#please follow the screenshot https://docs.appdynamics.com/display/PRO42/Build+a+Monitoring+Extension+Using+Java
+
+# List of HBase Instances
+servers:
+   - displayName: "Local HBase"
+     serviceUrl: ""           #"service:jmx:rmi:///jndi/rmi://127.0.0.1:10101/jmxrmi" #provide jmx service URL [OR] provide [host][port] pair
+     host: "localhost"
+     port: 10101
+     username:
+     # Provide password or encryptedPassword
+     password:
+     encryptedPassword:
+     regionServers:
+       - displayName: "RegionServer1"
+         serviceUrl: ""
+         host: "localhost"
+         port: 10101
+         username:
+         # Provide password or encryptedPassword
+         password:
+         encryptedPassword:
+       - displayName: "RegionServer2"
+         serviceUrl: ""
+         host: "localhost"
+         port: 10101
+         username:
+         # Provide password or encryptedPassword
+         password:
+         encryptedPassword:
+
+encryptionKey:
+
+connection:
+  sslCertCheckEnabled: false
+  socketTimeout: 10000
+  connectTimeout: 10000
+
+ # For each server or regionServer you monitor, you need 1 thread per instance. If you have configured 1 server with 2 region servers, you will need a total of 3 threads.
+ # By default we want to support 3 servers with 2 regionServers for each, so it is 3 * 3 = 9 threads.
+numberOfThreads: 9
+
+derivedMetrics:
+    - derivedMetricPath: "Local HBase|RegionServer|Cluster|JvmMetrics|MemHeapMaxM"
+      formula: "Local HBase|RegionServer|{y}|JvmMetrics|MemHeapMaxM"
+      aggregationType: “SUM"
+      timeRollUpType: “SUM"
+      clusterRollUpType: “COLLECTIVE”
+
+
+# Generate a custom dashboard based on the provided template
+customDashboard:
+  enabled: true
+  dashboardName: "Hbase Dashboard"
+  # Update the path to the dashboard file.
+  pathToSIMDashboard: "monitors/HBaseMonitor/CustomDashboard_SIM.json"
+  pathToNormalDashboard: "monitors/HBaseMonitor/CustomDashboard_Process.json"
+
+controllerInfo:
+  controllerHost: "controller"
+  controllerPort: 8090
+  account: "customer1"
+  username: "admin"
+  password: "admin"
+  encryptedPassword: ""
+  encryptionKey: ""
+  controllerSslEnabled: false
+  enableOrchestration: false
+  uniqueHostId: ""
+  accountAccessKey: ""
+  machinePath: ""
+  simEnabled: true
+  applicationName: ""
+  tierName: ""
+  nodeName: ""
